@@ -16,6 +16,8 @@
  * along with MiniDLNA. If not, see <http://www.gnu.org/licenses/>.
  */
 #include "config.h"
+
+#ifdef HAVE_INOTIFY
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
@@ -29,7 +31,7 @@
 #include <sys/time.h>
 #include <sys/resource.h>
 #include <poll.h>
-#ifdef HAVE_INOTIFY_H
+#ifdef HAVE_SYS_INOTIFY_H
 #include <sys/inotify.h>
 #else
 #include "linux/inotify.h"
@@ -64,6 +66,7 @@ struct watch
 static struct watch *watches = NULL;
 static struct watch *lastwatch = NULL;
 static time_t next_pl_fill = 0;
+int stop_notifier = 0;
 
 char *get_path_from_wd(int wd)
 {
@@ -309,7 +312,7 @@ inotify_insert_file(int update, char * name, const char * path)
 	char * id = NULL;
 	int depth = 1;
 	int ts;
-	enum media_types type = ALL_MEDIA;
+	media_types types = ALL_MEDIA;
 	struct media_dir_s * media_path = media_dirs;
 	struct stat st;
 
@@ -324,12 +327,12 @@ inotify_insert_file(int update, char * name, const char * path)
 	{
 		if( strncmp(path, media_path->path, strlen(media_path->path)) == 0 )
 		{
-			type = media_path->type;
+			types = media_path->types;
 			break;
 		}
 		media_path = media_path->next;
 	}
-	switch( type )
+	switch( types )
 	{
 		case ALL_MEDIA:
 			if( !is_image(path) &&
@@ -338,16 +341,32 @@ inotify_insert_file(int update, char * name, const char * path)
 			    !is_playlist(path) )
 				return -1;
 			break;
-		case AUDIO_ONLY:
+		case TYPE_AUDIO:
 			if( !is_audio(path) &&
 			    !is_playlist(path) )
 				return -1;
 			break;
-		case VIDEO_ONLY:
+		case TYPE_AUDIO|TYPE_VIDEO:
+			if( !is_audio(path) &&
+			    !is_video(path) &&
+			    !is_playlist(path) )
+			break;
+		case TYPE_AUDIO|TYPE_IMAGES:
+			if( !is_image(path) &&
+			    !is_audio(path) &&
+			    !is_playlist(path) )
+				return -1;
+			break;
+		case TYPE_VIDEO:
 			if( !is_video(path) )
 				return -1;
 			break;
-		case IMAGES_ONLY:
+		case TYPE_VIDEO|TYPE_IMAGES:
+			if( !is_image(path) &&
+			    !is_video(path) )
+				return -1;
+			break;
+		case TYPE_IMAGES:
 			if( !is_image(path) )
 				return -1;
 			break;
@@ -455,7 +474,7 @@ inotify_insert_directory(int fd, char *name, const char * path)
 	char path_buf[PATH_MAX];
 	int wd, dir_add;
 	enum file_types type = TYPE_UNKNOWN;
-	enum media_types dir_type = ALL_MEDIA;
+	media_types dir_types = ALL_MEDIA;
 	struct media_dir_s * media_path;
 	struct stat st;
 
@@ -506,7 +525,7 @@ inotify_insert_directory(int fd, char *name, const char * path)
 	{
 		if( strncmp(path, media_path->path, strlen(media_path->path)) == 0 )
 		{
-			dir_type = media_path->type;
+			dir_types = media_path->types;
 			break;
 		}
 		media_path = media_path->next;
@@ -540,7 +559,7 @@ inotify_insert_directory(int fd, char *name, const char * path)
 			case DT_REG:
 			case DT_LNK:
 			case DT_UNKNOWN:
-				type = resolve_unknown_type(path_buf, dir_type);
+				type = resolve_unknown_type(path_buf, dir_types);
 			default:
 				break;
 		}
@@ -760,7 +779,7 @@ start_inotify(void *args)
 					i += EVENT_SIZE + event->len;
 					continue;
 				}
-				esc_name = modifyString(strdup(event->name), "&", "&amp;amp;", 0);
+				esc_name = modifyString(strdup(event->name), "&", "&amp;amp;");
 				sprintf(path_buf, "%s/%s", get_path_from_wd(event->wd), event->name);
 				if ( event->mask & IN_ISDIR && (event->mask & (IN_CREATE|IN_MOVED_TO)) )
 				{
@@ -816,3 +835,4 @@ quitting:
 
 	return 0;
 }
+#endif

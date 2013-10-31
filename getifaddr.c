@@ -44,6 +44,7 @@
 
 #include "getifaddr.h"
 #include "log.h"
+#include "minidlnatypes.h"
 
 int
 getifaddr(const char * ifname, char * buf, int len)
@@ -236,4 +237,74 @@ get_remote_mac(struct in_addr ip_addr, unsigned char * mac)
 	}
 
 	return 0;
+}
+
+/* parselanaddr()
+ * parse address with mask
+ * ex: 192.168.1.1/24
+ * return value : 
+ *    0 : ok
+ *   -1 : error */
+static int
+parselanaddr(struct lan_addr_s * lan_addr, const char * str)
+{
+	const char * p;
+	int nbits = 24;
+	int n;
+	p = str;
+	while(*p && *p != '/' && !isspace(*p))
+		p++;
+	n = p - str;
+	if(*p == '/')
+	{
+		nbits = atoi(++p);
+		while(*p && !isspace(*p))
+			p++;
+	}
+	if(n>15)
+	{
+		DPRINTF(E_OFF, L_GENERAL, "Error parsing address/mask: %s\n", str);
+		return -1;
+	}
+	memcpy(lan_addr->str, str, n);
+	lan_addr->str[n] = '\0';
+	if(!inet_aton(lan_addr->str, &lan_addr->addr))
+	{
+		DPRINTF(E_OFF, L_GENERAL, "Error parsing address: %s\n", str);
+		return -1;
+	}
+	lan_addr->mask.s_addr = htonl(nbits ? (0xffffffff << (32 - nbits)) : 0);
+	return 0;
+}
+
+void
+get_lan_addresses(
+		const char *const value,
+		struct lan_addr_s *addresses,
+		int *address_count)
+{
+	const char *string, *word;
+	char ip_addr[INET_ADDRSTRLEN + 3] = {'\0'};
+
+	*address_count = 0;
+
+	for( string = value; (word = strtok((char *)string, ",")); string = NULL )
+	{
+		if(*address_count < MAX_LAN_ADDR)
+		{
+			if(getifaddr(word, ip_addr, sizeof(ip_addr)) >= 0)
+			{
+				if( *ip_addr && parselanaddr(&addresses[*address_count], ip_addr) == 0 )
+				{
+					strcpy(addresses[*address_count].if_name, word);
+					(*address_count)++;
+				}
+			}
+		}
+		else
+		{
+			DPRINTF(E_ERROR, L_GENERAL, "Too many listening ips (max: %d), ignoring %s\n",
+					MAX_LAN_ADDR, word);
+		}
+	}
 }

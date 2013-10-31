@@ -3,7 +3,7 @@
  * http://sourceforge.net/projects/minidlna/
  *
  * MiniDLNA media server
- * Copyright (C) 2008-2009  Justin Maggard
+ * Copyright (C) 2008-2012  Justin Maggard
  *
  * This file is part of MiniDLNA.
  *
@@ -46,7 +46,6 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  */
-#include <dirent.h>
 #include <stdlib.h>
 #include <unistd.h>
 #include <string.h>
@@ -54,17 +53,16 @@
 #include <ctype.h>
 #include <sys/types.h>
 #include <sys/socket.h>
+#include <sys/wait.h>
+#include <sys/file.h>
+#include <sys/time.h>
+#include <sys/param.h>
+#include <sys/stat.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <fcntl.h>
-#include <sys/file.h>
-#include <sys/time.h>
-#include <sys/stat.h>
-#include <sys/types.h>
-#include <sys/wait.h>
 #include <time.h>
 #include <signal.h>
-#include <sys/param.h>
 #include <errno.h>
 #include <pthread.h>
 #include <pwd.h>
@@ -111,6 +109,7 @@ static volatile int update_configuration = 0;
 static pid_t scanner_pid = 0;
 static pid_t group_pid = -1;
 
+extern int stop_notifier;
 pid_t dlna_connections[MAX_CONNECTION_COUNT];
 
 /* kill all children (active connections, scanner or inotify thread)
@@ -163,30 +162,29 @@ OpenAndConfHTTPSocket(unsigned short port)
 	/* Initialize client type cache */
 	memset(&clients, 0, sizeof(struct client_cache_s));
 
-	if( (s = socket(PF_INET, SOCK_STREAM, 0)) < 0)
+	s = socket(PF_INET, SOCK_STREAM, 0);
+	if (s < 0)
 	{
 		DPRINTF(E_ERROR, L_GENERAL, "socket(http): %s\n", strerror(errno));
 		return -1;
 	}
 
-	if(setsockopt(s, SOL_SOCKET, SO_REUSEADDR, &i, sizeof(i)) < 0)
-	{
+	if (setsockopt(s, SOL_SOCKET, SO_REUSEADDR, &i, sizeof(i)) < 0)
 		DPRINTF(E_WARN, L_GENERAL, "setsockopt(http, SO_REUSEADDR): %s\n", strerror(errno));
-	}
 
 	memset(&listenname, 0, sizeof(struct sockaddr_in));
 	listenname.sin_family = AF_INET;
 	listenname.sin_port = htons(port);
 	listenname.sin_addr.s_addr = htonl(INADDR_ANY);
 
-	if(bind(s, (struct sockaddr *)&listenname, sizeof(struct sockaddr_in)) < 0)
+	if (bind(s, (struct sockaddr *)&listenname, sizeof(struct sockaddr_in)) < 0)
 	{
 		DPRINTF(E_ERROR, L_GENERAL, "bind(http): %s\n", strerror(errno));
 		close(s);
 		return -1;
 	}
 
-	if(listen(s, 6) < 0)
+	if (listen(s, 6) < 0)
 	{
 		DPRINTF(E_ERROR, L_GENERAL, "listen(http): %s\n", strerror(errno));
 		close(s);
@@ -289,43 +287,40 @@ parselanaddr(struct lan_addr_s * lan_addr, const char * str)
 }
 
 static void
-getfriendlyname(char * buf, int len)
+getfriendlyname(char *buf, int len)
 {
-	char * dot = NULL;
-	char * hn = calloc(1, 256);
+	char *p = NULL;
+	char hn[256];
 	int off;
 
-	if( gethostname(hn, 256) == 0 )
+	if (gethostname(hn, sizeof(hn)) == 0)
 	{
 		strncpyt(buf, hn, len);
-		dot = strchr(buf, '.');
-		if( dot )
-			*dot = '\0';
+		p = strchr(buf, '.');
+		if (p)
+			*p = '\0';
 	}
 	else
-	{
 		strcpy(buf, "Unknown");
-	}
-	free(hn);
 
 	off = strlen(buf);
 	off += snprintf(buf+off, len-off, ": ");
 #ifdef READYNAS
-	FILE * info;
+	FILE *info;
 	char ibuf[64], *key, *val;
 	snprintf(buf+off, len-off, "ReadyNAS");
 	info = fopen("/proc/sys/dev/boot/info", "r");
-	if( !info )
+	if (!info)
 		return;
-	while( (val = fgets(ibuf, 64, info)) != NULL )
+	while ((val = fgets(ibuf, 64, info)) != NULL)
 	{
 		key = strsep(&val, ": \t");
 		val = trim(val);
-		if( strcmp(key, "model") == 0 )
+		if (strcmp(key, "model") == 0)
 		{
 			snprintf(buf+off, len-off, "%s", val);
 			key = strchr(val, ' ');
-			if( key )
+			if (key)
 			{
 				strncpyt(modelnumber, key+1, MODELNUMBER_MAX_LEN);
 				*key = '\0';
@@ -333,13 +328,13 @@ getfriendlyname(char * buf, int len)
 			snprintf(modelname, MODELNAME_MAX_LEN,
 				"Windows Media Connect compatible (%s)", val);
 		}
-		else if( strcmp(key, "serial") == 0 )
+		else if (strcmp(key, "serial") == 0)
 		{
 			strncpyt(serialnumber, val, SERIALNUMBER_MAX_LEN);
-			if( serialnumber[0] == '\0' )
+			if (serialnumber[0] == '\0')
 			{
 				char mac_str[13];
-				if( getsyshwaddr(mac_str, sizeof(mac_str)) == 0 )
+				if (getsyshwaddr(mac_str, sizeof(mac_str)) == 0)
 					strcpy(serialnumber, mac_str);
 				else
 					strcpy(serialnumber, "0");
@@ -348,37 +343,39 @@ getfriendlyname(char * buf, int len)
 		}
 	}
 	fclose(info);
+#if PNPX
 	memcpy(pnpx_hwid+4, "01F2", 4);
-	if( strcmp(modelnumber, "NVX") == 0 )
+	if (strcmp(modelnumber, "NVX") == 0)
 		memcpy(pnpx_hwid+17, "0101", 4);
-	else if( strcmp(modelnumber, "Pro") == 0 ||
+	else if (strcmp(modelnumber, "Pro") == 0 ||
 	         strcmp(modelnumber, "Pro 6") == 0 ||
-	         strncmp(modelnumber, "Ultra 6", 7) == 0 )
+	         strncmp(modelnumber, "Ultra 6", 7) == 0)
 		memcpy(pnpx_hwid+17, "0102", 4);
-	else if( strcmp(modelnumber, "Pro 2") == 0 ||
-	         strncmp(modelnumber, "Ultra 2", 7) == 0 )
+	else if (strcmp(modelnumber, "Pro 2") == 0 ||
+	         strncmp(modelnumber, "Ultra 2", 7) == 0)
 		memcpy(pnpx_hwid+17, "0103", 4);
-	else if( strcmp(modelnumber, "Pro 4") == 0 ||
-	         strncmp(modelnumber, "Ultra 4", 7) == 0 )
+	else if (strcmp(modelnumber, "Pro 4") == 0 ||
+	         strncmp(modelnumber, "Ultra 4", 7) == 0)
 		memcpy(pnpx_hwid+17, "0104", 4);
-	else if( strcmp(modelnumber+1, "100") == 0 )
+	else if (strcmp(modelnumber+1, "100") == 0)
 		memcpy(pnpx_hwid+17, "0105", 4);
-	else if( strcmp(modelnumber+1, "200") == 0 )
+	else if (strcmp(modelnumber+1, "200") == 0)
 		memcpy(pnpx_hwid+17, "0106", 4);
 	/* 0107 = Stora */
-	else if( strcmp(modelnumber, "Duo v2") == 0 )
+	else if (strcmp(modelnumber, "Duo v2") == 0)
 		memcpy(pnpx_hwid+17, "0108", 4);
-	else if( strcmp(modelnumber, "NV+ v2") == 0 )
+	else if (strcmp(modelnumber, "NV+ v2") == 0)
 		memcpy(pnpx_hwid+17, "0109", 4);
+#endif
 #else
 	char * logname;
 	logname = getenv("LOGNAME");
 #ifndef STATIC // Disable for static linking
-	if( !logname )
+	if (!logname)
 	{
 		struct passwd * pwent;
 		pwent = getpwuid(getuid());
-		if( pwent )
+		if (pwent)
 			logname = pwent->pw_name;
 	}
 #endif
@@ -387,59 +384,177 @@ getfriendlyname(char * buf, int len)
 }
 
 static int
-open_db(void)
+open_db(sqlite3 **sq3)
 {
 	char path[PATH_MAX];
 	int new_db = 0;
 
-	snprintf(path, sizeof(path), "%s/%s", db_path, DLNA_DB_FILE_NAME);
-	if( access(path, F_OK) != 0 )
+	snprintf(path, sizeof(path), "%s/files.db", db_path);
+	if (access(path, F_OK) != 0)
 	{
 		new_db = 1;
 		make_dir(db_path, S_ISVTX|S_IRWXU|S_IRWXG|S_IRWXO);
 	}
-	if( sqlite3_open(path, &db) != SQLITE_OK )
-	{
+	if (sqlite3_open(path, &db) != SQLITE_OK)
 		DPRINTF(E_FATAL, L_GENERAL, "ERROR: Failed to open sqlite database!  Exiting...\n");
-	}
+	if (sq3)
+		*sq3 = db;
 	sqlite3_busy_timeout(db, 5000);
 	sql_exec(db, "pragma page_size = 4096");
 	sql_exec(db, "pragma journal_mode = OFF");
 	sql_exec(db, "pragma synchronous = OFF;");
 	sql_exec(db, "pragma default_cache_size = 8192;");
+
 	return new_db;
 }
 
 static void
-get_lan_addresses(
-		const char *const value,
-		struct lan_addr_s *addresses,
-		int *address_count)
+check_db(sqlite3 *db, int new_db, pid_t *scanner_pid)
 {
-	const char *string, *word;
-	char ip_addr[INET_ADDRSTRLEN + 3] = {'\0'};
+	struct media_dir_s *media_path = NULL;
+	char cmd[PATH_MAX*2];
+	char **result;
+	int i, rows = 0;
+	int ret;
 
-	*address_count = 0;
-
-	for( string = value; (word = strtok((char *)string, ",")); string = NULL )
+	if (!new_db)
 	{
-		if(*address_count < MAX_LAN_ADDR)
+		/* Check if any new media dirs appeared */
+		media_path = media_dirs;
+		while (media_path)
 		{
-			if(getifaddr(word, ip_addr, sizeof(ip_addr)) >= 0)
+			ret = sql_get_int_field(db, "SELECT TIMESTAMP from DETAILS where PATH = %Q", media_path->path);
+			if (ret != media_path->types)
 			{
-				if( *ip_addr && parselanaddr(&addresses[*address_count], ip_addr) == 0 )
-				{
-					strcpy(addresses[*address_count].if_name, word);
-					(*address_count)++;
-				}
+				ret = 1;
+				goto rescan;
+			}
+			media_path = media_path->next;
+		}
+		/* Check if any media dirs disappeared */
+		sql_get_table(db, "SELECT VALUE from SETTINGS where KEY = 'media_dir'", &result, &rows, NULL);
+		for (i=1; i <= rows; i++)
+		{
+			media_path = media_dirs;
+			while (media_path)
+			{
+				if (strcmp(result[i], media_path->path) == 0)
+					break;
+				media_path = media_path->next;
+			}
+			if (!media_path)
+			{
+				ret = 2;
+				sqlite3_free_table(result);
+				goto rescan;
 			}
 		}
+		sqlite3_free_table(result);
+	}
+
+	ret = db_upgrade(db);
+	if (ret != 0)
+	{
+rescan:
+		if (ret < 0)
+			DPRINTF(E_WARN, L_GENERAL, "Creating new database at %s/files.db\n", db_path);
+		else if (ret == 1)
+			DPRINTF(E_WARN, L_GENERAL, "New media_dir detected; rescanning...\n");
+		else if (ret == 2)
+			DPRINTF(E_WARN, L_GENERAL, "Removed media_dir detected; rescanning...\n");
 		else
+			DPRINTF(E_WARN, L_GENERAL, "Database version mismatch; need to recreate...\n");
+		sqlite3_close(db);
+
+		snprintf(cmd, sizeof(cmd), "rm -rf %s/files.db %s/art_cache", db_path, db_path);
+		if (system(cmd) != 0)
+			DPRINTF(E_FATAL, L_GENERAL, "Failed to clean old file cache!  Exiting...\n");
+
+		open_db(&db);
+		if (CreateDatabase() != 0)
+			DPRINTF(E_FATAL, L_GENERAL, "ERROR: Failed to create sqlite database!  Exiting...\n");
+#if USE_FORK
+		scanning = 1;
+		sqlite3_close(db);
+		*scanner_pid = fork();
+		open_db(&db);
+		if (!(*scanner_pid)) /* child (scanner) process */
 		{
-			DPRINTF(E_ERROR, L_GENERAL, "Too many listening ips (max: %d), ignoring %s\n",
-					MAX_LAN_ADDR, word);
+			start_scanner();
+			sqlite3_close(db);
+			log_close();
+			freeoptions();
+			exit(EXIT_SUCCESS);
+		}
+#else
+		start_scanner();
+#endif
+	}
+}
+
+static int
+writepidfile(const char *fname, int pid, uid_t uid)
+{
+	FILE *pidfile;
+	struct stat st;
+	char path[PATH_MAX], *dir;
+	int ret = 0;
+
+	if(!fname || *fname == '\0')
+		return -1;
+
+	/* Create parent directory if it doesn't already exist */
+	strncpyt(path, fname, sizeof(path));
+	dir = dirname(path);
+	if (stat(dir, &st) == 0)
+	{
+		if (!S_ISDIR(st.st_mode))
+		{
+			DPRINTF(E_ERROR, L_GENERAL, "Pidfile path is not a directory: %s\n",
+			        fname);
+			return -1;
 		}
 	}
+	else
+	{
+		if (make_dir(dir, S_IRWXU|S_IRGRP|S_IXGRP|S_IROTH|S_IXOTH) != 0)
+		{
+			DPRINTF(E_ERROR, L_GENERAL, "Unable to create pidfile directory: %s\n",
+			        fname);
+			return -1;
+		}
+		if (uid >= 0)
+		{
+			if (chown(dir, uid, -1) != 0)
+				DPRINTF(E_WARN, L_GENERAL, "Unable to change pidfile ownership: %s\n",
+				        dir, strerror(errno));
+		}
+	}
+	
+	pidfile = fopen(fname, "w");
+	if (!pidfile)
+	{
+		DPRINTF(E_ERROR, L_GENERAL, "Unable to open pidfile for writing %s: %s\n",
+		        fname, strerror(errno));
+		return -1;
+	}
+
+	if (fprintf(pidfile, "%d\n", pid) <= 0)
+	{
+		DPRINTF(E_ERROR, L_GENERAL, 
+			"Unable to write to pidfile %s: %s\n", fname);
+		ret = -1;
+	}
+	if (uid >= 0)
+	{
+		if (fchown(fileno(pidfile), uid, -1) != 0)
+			DPRINTF(E_WARN, L_GENERAL, "Unable to change pidfile ownership: %s\n",
+			        pidfile, strerror(errno));
+	}
+
+	fclose(pidfile);
+
+	return ret;
 }
 
 /* init phase :
@@ -465,12 +580,14 @@ init(	int argc, char * * argv,
 	const char * optionsfile = "/var/tmp/minidlna.conf";
 	char mac_str[13];
 	char * string, * word;
-	enum media_types type;
 	char * path;
 	char buf[PATH_MAX];
-/*	char ip_addr[INET_ADDRSTRLEN + 3] = {'\0'}; */
-	char log_str[72] = "general,artwork,database,inotify,scanner,metadata,http,ssdp,tivo=warn";
+	char log_str[75] = "general,artwork,database,inotify,scanner,metadata,http,ssdp,tivo=warn";
 	char *log_level = NULL;
+	struct media_dir_s *media_dir;
+	int ifaces = 0;
+	media_types types;
+	uid_t uid = -1;
 
 	*updatefile = NULL;
 	*statusfile = NULL;
@@ -487,7 +604,7 @@ init(	int argc, char * * argv,
 	}
 
 	/* set up uuid based on mac address */
-	if( getsyshwaddr(mac_str, sizeof(mac_str)) < 0 )
+	if (getsyshwaddr(mac_str, sizeof(mac_str)) < 0)
 	{
 		DPRINTF(E_OFF, L_GENERAL, "No MAC address found.  Falling back to generic UUID.\n");
 		strcpy(mac_str, "554e4b4e4f57");
@@ -497,9 +614,10 @@ init(	int argc, char * * argv,
 
 	getfriendlyname(friendly_name, FRIENDLYNAME_MAX_LEN);
 	
-	runtime_vars.port = -1;
+	runtime_vars.port = 8200;
 	runtime_vars.notify_interval = 895;	/* seconds between SSDP announces */
 	runtime_vars.root_container = NULL;
+	runtime_vars.ifaces[0] = NULL;
 
 	/* read options file first since
 	 * command line arguments have final say */
@@ -509,202 +627,201 @@ init(	int argc, char * * argv,
 		if(access(optionsfile, F_OK) == 0 || options_flag)
 			DPRINTF(E_ERROR, L_GENERAL, "Error reading configuration file %s\n", optionsfile);
 	}
-	else
+
+	for(i=0; i<num_options; i++)
 	{
-		for(i=0; i<num_options; i++)
+		switch(ary_options[i].id)
 		{
-			switch(ary_options[i].id)
+		case UPNPIFNAME:
+			for (string = ary_options[i].value; (word = strtok(string, ",")); string = NULL)
 			{
-			case UPNPIFNAME:
-				get_lan_addresses(ary_options[i].value, lan_addr, &n_lan_addr);
-				break;
-/*			case UPNPLISTENING_IP:
-				if(n_lan_addr < MAX_LAN_ADDR)
+				if (ifaces >= MAX_LAN_ADDR)
 				{
-					if(parselanaddr(&lan_addr[n_lan_addr],
-					             ary_options[i].value) == 0)
-						n_lan_addr++;
+					DPRINTF(E_ERROR, L_GENERAL, "Too many interfaces (max: %d), ignoring %s\n",
+			    			MAX_LAN_ADDR, word);
+					break;
 				}
-				else
+				runtime_vars.ifaces[ifaces++] = word;
+			}
+			break;
+		case UPNPPORT:
+			runtime_vars.port = atoi(ary_options[i].value);
+			break;
+		case UPNPPRESENTATIONURL:
+			presurl = ary_options[i].value;
+			break;
+		case UPNPNOTIFY_INTERVAL:
+			runtime_vars.notify_interval = atoi(ary_options[i].value);
+			break;
+		case UPNPSERIAL:
+			strncpyt(serialnumber, ary_options[i].value, SERIALNUMBER_MAX_LEN);
+			break;				
+		case UPNPMODEL_NAME:
+			strncpyt(modelname, ary_options[i].value, MODELNAME_MAX_LEN);
+			break;
+		case UPNPMODEL_NUMBER:
+			strncpyt(modelnumber, ary_options[i].value, MODELNUMBER_MAX_LEN);
+			break;
+		case UPNPFRIENDLYNAME:
+			strncpyt(friendly_name, ary_options[i].value, FRIENDLYNAME_MAX_LEN);
+			break;
+		case UPNPMEDIADIR:
+			types = ALL_MEDIA;
+			path = ary_options[i].value;
+			word = strchr(path, ',');
+			if (word && (access(path, F_OK) != 0))
+			{
+				types = 0;
+				while (*path)
 				{
-					DPRINTF(E_ERROR, L_GENERAL, "Too many listening ips (max: %d), ignoring %s\n",
-			    		    MAX_LAN_ADDR, ary_options[i].value);
-				}
-				break; */
-			case UPNPPORT:
-				runtime_vars.port = atoi(ary_options[i].value);
-				break;
-			case UPNPPRESENTATIONURL:
-				presurl = ary_options[i].value;
-				break;
-			case UPNPNOTIFY_INTERVAL:
-				runtime_vars.notify_interval = atoi(ary_options[i].value);
-				break;
-			case UPNPSERIAL:
-				strncpyt(serialnumber, ary_options[i].value, SERIALNUMBER_MAX_LEN);
-				break;				
-			case UPNPMODEL_NAME:
-				strncpyt(modelname, ary_options[i].value, MODELNAME_MAX_LEN);
-				break;
-			case UPNPMODEL_NUMBER:
-				strncpyt(modelnumber, ary_options[i].value, MODELNUMBER_MAX_LEN);
-				break;
-			case UPNPFRIENDLYNAME:
-				strncpyt(friendly_name, ary_options[i].value, FRIENDLYNAME_MAX_LEN);
-				break;
-			case UPNPMEDIADIR:
-				type = ALL_MEDIA;
-				char * myval = NULL;
-				switch( ary_options[i].value[0] )
-				{
-				case 'A':
-				case 'a':
-					if( ary_options[i].value[0] == 'A' || ary_options[i].value[0] == 'a' )
-						type = AUDIO_ONLY;
-				case 'V':
-				case 'v':
-					if( ary_options[i].value[0] == 'V' || ary_options[i].value[0] == 'v' )
-						type = VIDEO_ONLY;
-				case 'P':
-				case 'p':
-					if( ary_options[i].value[0] == 'P' || ary_options[i].value[0] == 'p' )
-						type = IMAGES_ONLY;
-					myval = index(ary_options[i].value, '/');
-				case '/':
-					path = realpath(myval ? myval:ary_options[i].value, buf);
-					if( !path )
-						path = (myval ? myval:ary_options[i].value);
-					if( access(path, F_OK) != 0 )
+					if (*path == ',')
 					{
-						DPRINTF(E_ERROR, L_GENERAL, "Media directory \"%s\" not accessible! [%s]\n",
-						        path, strerror(errno));
+						path++;
 						break;
 					}
-
-					struct media_dir_s * this_dir = calloc(1, sizeof(struct media_dir_s));
-					this_dir->path = strdup(path);
-					this_dir->type = type;
-					if( !media_dirs )
-					{
-						media_dirs = this_dir;
-					}
+					else if (*path == 'A' || *path == 'a')
+						types |= TYPE_AUDIO;
+					else if (*path == 'V' || *path == 'v')
+						types |= TYPE_VIDEO;
+					else if (*path == 'P' || *path == 'p')
+						types |= TYPE_IMAGES;
 					else
-					{
-						struct media_dir_s * all_dirs = media_dirs;
-						while( all_dirs->next )
-							all_dirs = all_dirs->next;
-						all_dirs->next = this_dir;
-					}
-					break;
-				default:
-					DPRINTF(E_ERROR, L_GENERAL, "Media directory entry not understood! [%s]\n",
-					        ary_options[i].value);
-					break;
+						DPRINTF(E_FATAL, L_GENERAL, "Media directory entry not understood [%s]\n",
+							ary_options[i].value);
+					path++;
 				}
+			}
+			path = realpath(path, buf);
+			if (!path || access(path, F_OK) != 0)
+			{
+				DPRINTF(E_ERROR, L_GENERAL, "Media directory \"%s\" not accessible [%s]\n",
+					ary_options[i].value, strerror(errno));
 				break;
-			case UPNPALBUMART_NAMES:
-				for( string = ary_options[i].value; (word = strtok(string, "/")); string = NULL )
+			}
+			media_dir = calloc(1, sizeof(struct media_dir_s));
+			media_dir->path = strdup(path);
+			media_dir->types = types;
+			if (media_dirs)
+			{
+				struct media_dir_s *all_dirs = media_dirs;
+				while( all_dirs->next )
+					all_dirs = all_dirs->next;
+				all_dirs->next = media_dir;
+			}
+			else
+				media_dirs = media_dir;
+			break;
+		case UPNPALBUMART_NAMES:
+			for (string = ary_options[i].value; (word = strtok(string, "/")); string = NULL)
+			{
+				struct album_art_name_s * this_name = calloc(1, sizeof(struct album_art_name_s));
+				int len = strlen(word);
+				if (word[len-1] == '*')
 				{
-					struct album_art_name_s * this_name = calloc(1, sizeof(struct album_art_name_s));
-					int len = strlen(word);
-					if( word[len-1] == '*' )
-					{
-						word[len-1] = '\0';
-						this_name->wildcard = 1;
-					}
-					this_name->name = strdup(word);
-					if( !album_art_names )
-					{
-						album_art_names = this_name;
-					}
-					else
-					{
-						struct album_art_name_s * all_names = album_art_names;
-						while( all_names->next )
-							all_names = all_names->next;
-						all_names->next = this_name;
-					}
+					word[len-1] = '\0';
+					this_name->wildcard = 1;
 				}
-				break;
-			case UPNPDBDIR:
-				path = realpath(ary_options[i].value, buf);
-				if( !path )
-					path = (ary_options[i].value);
-				make_dir(path, S_ISVTX|S_IRWXU|S_IRWXG|S_IRWXO);
-				if( access(path, F_OK) != 0 )
+				this_name->name = strdup(word);
+				if (album_art_names)
 				{
-					DPRINTF(E_FATAL, L_GENERAL, "Database path not accessible! [%s]\n", path);
-					break;
+					struct album_art_name_s * all_names = album_art_names;
+					while( all_names->next )
+						all_names = all_names->next;
+					all_names->next = this_name;
 				}
-				strncpyt(db_path, path, PATH_MAX);
+				else
+					album_art_names = this_name;
+			}
+			break;
+		case UPNPDBDIR:
+			path = realpath(ary_options[i].value, buf);
+			if( !path )
+				path = (ary_options[i].value);
+			make_dir(path, S_ISVTX|S_IRWXU|S_IRWXG|S_IRWXO);
+			if( access(path, F_OK) != 0 )
+			{
+				DPRINTF(E_FATAL, L_GENERAL, "Database path not accessible! [%s]\n", path);
 				break;
-			case UPNPLOGDIR:
-				path = realpath(ary_options[i].value, buf);
-				if( !path )
-					path = (ary_options[i].value);
-				make_dir(path, S_ISVTX|S_IRWXU|S_IRWXG|S_IRWXO);
-				if( access(path, F_OK) != 0 )
-				{
-					DPRINTF(E_FATAL, L_GENERAL, "Log path not accessible! [%s]\n", path);
-					break;
-				}
-				strncpyt(log_path, path, PATH_MAX);
+			}
+			strncpyt(db_path, path, PATH_MAX);
+			break;
+		case UPNPLOGDIR:
+			path = realpath(ary_options[i].value, buf);
+			if( !path )
+				path = (ary_options[i].value);
+			make_dir(path, S_ISVTX|S_IRWXU|S_IRWXG|S_IRWXO);
+			if( access(path, F_OK) != 0 )
+			{
+				DPRINTF(E_FATAL, L_GENERAL, "Log path not accessible! [%s]\n", path);
 				break;
-			case UPNPLOGLEVEL:
-				log_level = ary_options[i].value;
+			}
+			strncpyt(log_path, path, PATH_MAX);
+			break;
+		case UPNPLOGLEVEL:
+			log_level = ary_options[i].value;
+			break;
+		case UPNPINOTIFY:
+			if( (strcmp(ary_options[i].value, "yes") != 0) && !atoi(ary_options[i].value) )
+				CLEARFLAG(INOTIFY_MASK);
+			break;
+		case ENABLE_TIVO:
+			if( (strcmp(ary_options[i].value, "yes") == 0) || atoi(ary_options[i].value) )
+				SETFLAG(TIVO_MASK);
+			break;
+		case ENABLE_DLNA_STRICT:
+			if( (strcmp(ary_options[i].value, "yes") == 0) || atoi(ary_options[i].value) )
+				SETFLAG(DLNA_STRICT_MASK);
+			break;
+		case ROOT_CONTAINER:
+			switch (ary_options[i].value[0]) {
+			case '.':
+				runtime_vars.root_container = NULL;
 				break;
-			case UPNPINOTIFY:
-				if( (strcmp(ary_options[i].value, "yes") != 0) && !atoi(ary_options[i].value) )
-					CLEARFLAG(INOTIFY_MASK);
+			case 'B':
+			case 'b':
+				runtime_vars.root_container = BROWSEDIR_ID;
 				break;
-			case ENABLE_TIVO:
-				if( (strcmp(ary_options[i].value, "yes") == 0) || atoi(ary_options[i].value) )
-					SETFLAG(TIVO_MASK);
+			case 'M':
+			case 'm':
+				runtime_vars.root_container = MUSIC_ID;
 				break;
-			case ENABLE_DLNA_STRICT:
-				if( (strcmp(ary_options[i].value, "yes") == 0) || atoi(ary_options[i].value) )
-					SETFLAG(DLNA_STRICT_MASK);
+			case 'V':
+			case 'v':
+				runtime_vars.root_container = VIDEO_ID;
 				break;
-			case ROOT_CONTAINER:
-				switch( ary_options[i].value[0] )
-				{
-				case '.':
-					runtime_vars.root_container = NULL;
-					break;
-				case 'B':
-				case 'b':
-					runtime_vars.root_container = BROWSEDIR_ID;
-					break;
-				case 'M':
-				case 'm':
-					runtime_vars.root_container = MUSIC_ID;
-					break;
-				case 'V':
-				case 'v':
-					runtime_vars.root_container = VIDEO_ID;
-					break;
-				case 'P':
-				case 'p':
-					runtime_vars.root_container = IMAGE_ID;
-					break;
-				default:
-					DPRINTF(E_ERROR, L_GENERAL, "Invalid root container! [%s]\n",
-						ary_options[i].value);
-					break;
-				}
-				break;
-			case UPNPMINISSDPDSOCKET:
-				minissdpdsocketpath = ary_options[i].value;
-				break;
-			case RESCAN:
-				/* ignore here */
+			case 'P':
+			case 'p':
+				runtime_vars.root_container = IMAGE_ID;
 				break;
 			default:
-				DPRINTF(E_ERROR, L_GENERAL, "Unknown option in file %s\n",
-				        optionsfile);
+				DPRINTF(E_ERROR, L_GENERAL, "Invalid root container! [%s]\n",
+					ary_options[i].value);
+				break;
 			}
+			break;
+		case UPNPMINISSDPDSOCKET:
+			minissdpdsocketpath = ary_options[i].value;
+			break;
+		case RESCAN:
+			/* ignore here */
+			break;
+		case USER_ACCOUNT:
+			uid = strtol(ary_options[i].value, &string, 0);
+			if (*string)
+			{
+				/* Symbolic username given, not UID. */
+				struct passwd *entry = getpwnam(ary_options[i].value);
+				if (!entry)
+					DPRINTF(E_FATAL, L_GENERAL, "Bad user '%s'.\n", argv[i]);
+				uid = entry->pw_uid;
+			}
+			break;
+		default:
+			DPRINTF(E_ERROR, L_GENERAL, "Unknown option in file %s\n",
+					optionsfile);
 		}
 	}
+
 	if( log_path[0] == '\0' )
 	{
 		if( db_path[0] == '\0' )
@@ -956,35 +1073,24 @@ init(	int argc, char * * argv,
 	else
 		strcpy(presentationurl, "/");
 
-	/* set signal handler */
+	/* set signal handlers */
 	memset(&sa, 0, sizeof(struct sigaction));
 	sa.sa_handler = sigterm;
 	if (sigaction(SIGTERM, &sa, NULL))
-	{
-		DPRINTF(E_FATAL, L_GENERAL, "Failed to set SIGTERM handler. EXITING.\n");
-	}
+		DPRINTF(E_FATAL, L_GENERAL, "Failed to set %s handler. EXITING.\n", "SIGTERM");
 	if (sigaction(SIGINT, &sa, NULL))
-	{
-		DPRINTF(E_FATAL, L_GENERAL, "Failed to set SIGINT handler. EXITING.\n");
-	}
+		DPRINTF(E_FATAL, L_GENERAL, "Failed to set %s handler. EXITING.\n", "SIGINT");
+	if (signal(SIGPIPE, SIG_IGN) == SIG_ERR)
+		DPRINTF(E_FATAL, L_GENERAL, "Failed to set %s handler. EXITING.\n", "SIGPIPE");
+	if (signal(SIGHUP, &sighup) == SIG_ERR)
+		DPRINTF(E_FATAL, L_GENERAL, "Failed to set %s handler. EXITING.\n", "SIGHUP");
 
-	sa.sa_handler = sighup;
-	if (sigaction(SIGHUP, &sa, NULL))
-	{
-		DPRINTF(E_FATAL, L_GENERAL, "Failed to set SIGHUP handler. EXITING.\n");
-	}
+	if (writepidfile(pidfilename, pid, uid) != 0)
+		pidfilename = NULL;
 
-	sa.sa_handler = sigchld;
-	if (sigaction(SIGCHLD, &sa, NULL))
-	{
-		DPRINTF(E_FATAL, L_GENERAL, "Failed to set SIGCHLD handler. EXITING.\n");
-	}
-
-	if(signal(SIGPIPE, SIG_IGN) == SIG_ERR) {
-		DPRINTF(E_FATAL, L_GENERAL, "Failed to ignore SIGPIPE signals. EXITING.\n");
-	}
-
-	writepidfile(pidfilename, pid);
+	if (uid != -1 && setuid(uid) == -1)
+		DPRINTF(E_FATAL, L_GENERAL, "Failed to switch to uid '%d'. [%s] EXITING.\n",
+		        uid, strerror(errno));
 
 	return 0;
 }
@@ -1266,7 +1372,7 @@ restart_scanning(pid_t *scanner_pid, const char *const statusfile, int full)
 	{
 		sqlite3_close(db);
 		db_clean_cache(db_path);
-		open_db();
+		open_db(NULL);
 
 		/* the database should be opened here */
 		if( CreateDatabase() != 0 )
@@ -1282,7 +1388,7 @@ restart_scanning(pid_t *scanner_pid, const char *const statusfile, int full)
 
 	if(!*scanner_pid) /* child (scanner) process */
 	{
-		open_db();
+		open_db(NULL);
 
 		if( !full )
 		{
@@ -1495,7 +1601,7 @@ read_configuration_updates(
 
 			sqlite3_close(db);
 			restart_scanning(scanner_pid, statusfile, full);
-			open_db();
+			open_db(NULL);
 
 			/* start a notification thread with a blocked SIGCHLD */
 			dlna_signal_block(SIGCHLD);
@@ -1527,7 +1633,7 @@ read_configuration_updates(
 int
 main(int argc, char * * argv)
 {
-	int i;
+	int ret, i;
 	const char *updatefile = NULL;
 	const char *statusfile = NULL;
 	int sudp = -1, shttpl = -1;
@@ -1594,10 +1700,7 @@ main(int argc, char * * argv)
 #endif
 	LIST_INIT(&upnphttphead);
 
-	av_register_all();
-	av_log_set_level(AV_LOG_ERROR);
-
-	if( open_db() == 0 )
+	ret = open_db(NULL);
 	{
 		updateID = sql_get_int_field(db, "SELECT UPDATE_ID from SETTINGS");
 	}
@@ -1620,7 +1723,7 @@ main(int argc, char * * argv)
 		}
 		/* scanning should be called with a closed database */
 		restart_scanning(&scanner_pid, statusfile, 1);
-		open_db();
+		open_db(NULL);
 	}
 
 	/* start a notification thread with a blocked SIGCHLD */
@@ -1632,15 +1735,14 @@ main(int argc, char * * argv)
 	}
 	dlna_signal_unblock(SIGCHLD);
 
-	sudp = OpenAndConfSSDPReceiveSocket(n_lan_addr, lan_addr);
-	if(sudp < 0)
+	sudp = OpenAndConfSSDPReceiveSocket();
+	if (sudp < 0)
 	{
 		DPRINTF(E_INFO, L_GENERAL, "Failed to open socket for receiving SSDP. Trying to use MiniSSDPd\n");
-		if(SubmitServicesToMiniSSDPD(lan_addr[0].str, runtime_vars.port) < 0) {
+		if (SubmitServicesToMiniSSDPD(lan_addr[0].str, runtime_vars.port) < 0)
 			DPRINTF(E_FATAL, L_GENERAL, "Failed to connect to MiniSSDPd. EXITING");
-			return 1;
-		}
 	}
+
 	/* open socket for HTTP connections. Listen on the 1st LAN address */
 	shttpl = OpenAndConfHTTPSocket(runtime_vars.port);
 	if(shttpl < 0)
