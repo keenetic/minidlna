@@ -196,6 +196,8 @@ extern uint32_t runtime_flags;
 #define CLEARFLAG(mask)	runtime_flags &= ~mask
 
 extern const char *pidfilename;
+extern const char *updatefilename;
+extern const char *statusfilename;
 
 extern char uuidvalue[];
 

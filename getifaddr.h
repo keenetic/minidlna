@@ -42,8 +42,6 @@
  * take a network interface name and write the
  * ip v4 address as text in the buffer
  * returns: 0 success, -1 failure */
-int
-getifaddr(const char * ifname, char * buf, int len);
 
 int
 getsysaddr(char * buf, int len);

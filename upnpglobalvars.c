@@ -64,6 +64,8 @@ struct runtime_vars_s runtime_vars;
 uint32_t runtime_flags = INOTIFY_MASK;
 
 const char * pidfilename = "/var/run/minidlna.pid";
+const char *updatefilename = "/var/run/minidlna.conf.update";
+const char *statusfilename = "/var/run/minidlna.status";
 
 char uuidvalue[] = "uuid:00000000-0000-0000-0000-000000000000";
 char modelname[MODELNAME_MAX_LEN] = ROOTDEV_MODELNAME;

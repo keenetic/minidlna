@@ -746,6 +746,17 @@ ScanDirectory(const char *dir, const char *parent, media_types dir_types)
 		type = TYPE_UNKNOWN;
 		sprintf(full_path, "%s/%s", dir, namelist[i]->d_name);
 		name = escape_tag(namelist[i]->d_name, 1);
+
+		FILE *fp = fopen(statusfilename, "w");
+
+		if(fp != NULL)
+		{
+			/* write a relative new name to a scanning status file */
+			int media_dir_size = strlen(dir);
+			fprintf(fp, "%s", full_path + media_dir_size);
+			fclose(fp);
+		}
+
 		if( namelist[i]->d_type == DT_DIR )
 		{
 			type = TYPE_DIR;
@@ -813,6 +824,10 @@ start_scanner()
 		system("/bin/sh /ramfs/.rescan_done");
 	unlink("/ramfs/.upnp-av_scan");
 #endif
+
+	/* try to remove in any way */
+	unlink(statusfilename);
+
 	/* Create this index after scanning, so it doesn't slow down the scanning process.
 	 * This index is very useful for large libraries used with an XBox360 (or any
 	 * client that uses UPnPSearch on large containers). */
