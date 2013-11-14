@@ -27,9 +27,7 @@
 #include "misc.h"
 #include "tagutils.h"
 #include "textutils.h"
-// #include "log.h"
-
-#include <nconv.h>
+#include "log.h"
 
 
 #define MAX_BUF 4096
@@ -92,40 +90,6 @@ start_plist(const char *path, struct song_metadata *psong, struct stat *stat, ch
 	return 0;
 }
 
-char *utf8_fgets(char *pbuf, int isize, FILE *fin) {
-	char ctb[MAX_BUF / 4];
-	nconv_t cnv;
-	size_t inbytes, outbytes;
-	char 	*in, *out;
-	
-	/* no conversion needed */
-	if( _utf8bom ) return fgets(pbuf, isize, fin);
-	
-	if( isize <= 0 || !(fgets(ctb, sizeof(ctb) - 1, fin)) ) return NULL;
-	ctb[sizeof(ctb) - 1] = 0;
-	
-	/* test conversion need */
-	if( !_utf8bom ) _utf8bom = is_utf8(ctb);
-	
-	/* fallback */
-	if( _utf8bom || (cnv = nconv_open("utf-8", "cp1251")) == (nconv_t)-1 ) {
-		strncpy(pbuf, ctb, isize - 1);
-		pbuf[isize - 1] = 0;
-		return pbuf;
-	}
-	
-	in = ctb;
-	out = pbuf;
-	
-	inbytes = strlen(ctb) + 1;
-	outbytes = isize;
-	nconv(cnv, &in, &inbytes, &out, &outbytes);
-	pbuf[isize - 1] = 0;
-	
-	nconv_close(cnv);
-	return pbuf;
-}
-
 int
 _m3u_pls_next_track(struct song_metadata *psong, struct stat *stat, char *lang, char *type)
 {
@@ -135,11 +99,21 @@ _m3u_pls_next_track(struct song_metadata *psong, struct stat *stat, char *lang, 
 	memset((void*)psong, 0, sizeof(struct song_metadata));
 
 	// read first line
-	p = utf8_fgets(buf, MAX_BUF, fp);
+	p = fgets(buf, MAX_BUF, fp);
 	if(!p)
 	{
 		fclose(fp);
 		return 1;
+	}
+
+	if(strcasecmp(type, "m3u") == 0)
+	{
+		// check BOM
+		if(!_utf8bom && p[0] == '\xef' && p[1] == '\xbb' && p[2] == '\xbf')
+		{
+			_utf8bom = 1;
+			p += 3;
+		}
 	}
 
 	while(p)
@@ -184,7 +158,7 @@ _m3u_pls_next_track(struct song_metadata *psong, struct stat *stat, char *lang, 
 		psong->path = strdup(p);
 		return 0;
 next_line:
-		p = utf8_fgets(buf, MAX_BUF, fp);
+		p = fgets(buf, MAX_BUF, fp);
 	}
 
 	fclose(fp);

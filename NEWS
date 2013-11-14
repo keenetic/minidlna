@@ -1,3 +1,31 @@
+1.1.0 - Released 04-April-2013
+--------------------------------
+- Add support for other operating systems.
+- Switch to autoconf from our handcrafted genconfig.sh.
+- Add configuration option for UUID.
+- Add configuration option to specify the user to run as.
+- Add support for limiting a media dir to multiple media types.
+- Force a rescan if we detect a new or missing media_dir entry.
+- Fix crash caused by certain TiVo clients.
+- Fix crash bug on video files with some ffmpeg library versions.
+- Add support for TiVo MPEG-TS files.
+- Add some logging and forking tweaks to work better with systemd.
+- Validate or escape user input to prevent SQL injection.
+- Add forced sorting support for Panasonic devices.
+- Add network interface monitoring support on Linux.
+- Don't require a configured network interface to start up.
+
+1.0.25 - Released 13-July-2012
+--------------------------------
+- Fix a couple crash bugs on malformed WAV files.
+- Forcibly tweak the model number for Xbox360 clients, or they might ignore us.
+- Enable all network interfaces by default if none were specified.
+- Add flag to force downscaled thumbnails rather than using embedded ones.
+- Add DirecTV client detection, and fix image resolution issue.
+- Add support for the latest ffmpeg/libav library versions.
+- Fix a potential crash on requests for a resize of a non-existent image.
+- Make DeviceID checking more permissive for Sagem Radio.
+
 1.0.24 - Released 14-Feb-2012
 --------------------------------
 - Fix playlist browsing with no SortOrder specified.

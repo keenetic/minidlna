@@ -215,7 +215,13 @@ sighup(int sig)
 	DPRINTF(E_WARN, L_GENERAL,
 		"received signal %d, updating a configuration...\n", sig);
 
-	update_configuration = 1;
+//	update_configuration = 1;
+
+	signal(sig, sighup);
+	DPRINTF(E_WARN, L_GENERAL, "received signal %d, re-read\n", sig);
+
+	reload_ifaces(1);
+
 }
 
 /* Handler for the SIGCHLD signal (remove terminated children PIDs) */
@@ -952,13 +958,12 @@ init(int argc, char **argv)
 	if (debug_flag)
 	{
 		pid = getpid();
-//		strcpy(log_str+65, "maxdebug");
+		strcpy(log_str+65, "maxdebug");
 		log_level = log_str;
 	}
 	else if (GETFLAG(SYSTEMD_MASK))
 	{
 		pid = getpid();
-		log_level = NULL;
 	}
 	else
 	{
@@ -1012,548 +1017,6 @@ init(int argc, char **argv)
 	return 0;
 }
 
-static int
-update_db_path(const char *path)
-{
-	struct stat st;
-	int ts;
-	sqlite_int64 detailID;
-	char *pid;
-
-	if( lstat(path, &st) < 0 ) { /* not exist's on disk */
-		detailID = sql_get_int_field(db, "SELECT ID from DETAILS where PATH = '%q'", path);
-		pid = NULL;
-		if( detailID == 0 ||
-			( (pid = sql_get_text_field(db, "SELECT CLASS from OBJECTS where DETAIL_ID = %lld", detailID)) &&
-				strstr(pid, "container.storageFolder")
-			)
-		   ) {
-				DPRINTF(E_DEBUG, L_GENERAL, "folder %s not exist's, remove\n", path);
-				sqlite3_free(pid);
-				inotify_remove_directory(-1, path);
-				return 1;
-			}
-
-		if( pid ) sqlite3_free(pid);
-
-		DPRINTF(E_DEBUG, L_GENERAL, "file %s not exist's, remove\n", path);
-		inotify_remove_file(path);
-	} else {
-		if( !S_ISDIR(st.st_mode) ) {
-			ts = sql_get_int_field(db, "SELECT TIMESTAMP from DETAILS where PATH = '%q'", path);
-			if( ts && ts < st.st_mtime ) {
-				DPRINTF(E_DEBUG, L_GENERAL, "path %s is newer than in db, remove\n", path);
-				inotify_remove_file(path);
-			}
-		}
-	}
-
-	return 0;
-}
-
-static void
-db_cleanup_list()
-{
-	char **result;
-	int rows, ret;
-
-	/* phase 1, clean */
-	ret = 1;
-	while( ret ) { /* no need to force rescan */
-		rows = 0, ret = 0;
-		if( sql_get_table(db, "SELECT PATH from DETAILS", &result, &rows, NULL) == SQLITE_OK ) {
-			while( !ret && rows > 0 ) {
-				if( result[rows] ) ret = update_db_path(result[rows]);
-				rows--;
-			}
-			sqlite3_free_table(result);
-		}
-	}
-
-	rows = 0;
-	if( sql_get_table(db, "SELECT PATH from PLAYLISTS UNION all SELECT PATH from CAPTIONS", &result, &rows, NULL) == SQLITE_OK ) {
-		while( rows > 0 ) {
-			if( result[rows] ) {
-				DPRINTF(E_DEBUG, L_GENERAL, "force remove playlist's and caption's: %s\n", result[rows]);
-				inotify_remove_file(result[rows]);
-			}
-			rows--;
-		}
-		sqlite3_free_table(result);
-	}
-}
-
-static int
-recursive_remove(
-		const char *const path,
-		const char *const entry)
-{
-	size_t l = strlen(path) + strlen(entry) + 2; /* ".../...\0" */
-	char *name = malloc(l);
-	int ret = -1;
-
-	if(name == NULL)
-	{
-		DPRINTF(E_FATAL, L_GENERAL, "Not enough memory.\n");
-	}
-
-	struct stat s;
-
-	snprintf(name, l, "%s/%s", path, entry);
-
-	if(stat(name, &s) != 0)
-	{
-		DPRINTF(E_ERROR, L_GENERAL,
-			"Failed to get attributes for %s: %s.\n",
-			name, strerror(errno));
-	}
-	else
-	{
-		if(S_ISDIR(s.st_mode))
-		{
-			/* remove all directory contents */
-
-			DIR *dir = opendir(name);
-
-			if(dir == NULL)
-			{
-				DPRINTF(E_ERROR, L_GENERAL,
-					"Failed to open directory %s: %s.\n",
-					name, strerror(errno));
-			}
-			else
-			{
-				struct dirent *dentry = dirent_allocate(dir);
-				struct dirent *d = NULL;
-
-				if(dentry != NULL)
-				{
-					ret = 0;
-
-					while(
-						readdir_r(dir, dentry, &d) == 0 &&
-						d != NULL && ret == 0)
-					{
-						if(	strcmp(d->d_name, ".") != 0 &&
-							strcmp(d->d_name, "..") != 0 )
-						{
-							ret = recursive_remove(name, d->d_name);
-						}
-					}
-
-					dirent_free(dentry);
-				}
-				else
-				{
-					DPRINTF(E_FATAL, L_GENERAL,
-						"Failed to allocate a directory entry " \
-						"for removing.\n");
-				}
-
-				closedir(dir);
-			}
-
-			if(ret == 0)
-			{
-				ret = rmdir(name);
-
-				if(ret == 0)
-				{
-					DPRINTF(E_WARN, L_GENERAL,
-						"%s directory removed.\n", name);
-				}
-				else
-				{
-					DPRINTF(E_WARN, L_GENERAL,
-						"failed to remove %s directory: %s.\n",
-						name, strerror(errno));
-				}
-			}
-		}
-		else
-		{
-			ret = unlink(name);
-
-			if(ret == 0)
-			{
-				DPRINTF(E_WARN, L_GENERAL, "%s removed.\n", name);
-			}
-			else
-			{
-				DPRINTF(E_WARN, L_GENERAL, "failed to remove %s: %s.\n",
-					name, strerror(errno));
-			}
-		}
-	}
-
-	free(name);
-
-	return ret;
-}
-
-static int
-db_clean_cache(const char *const db_path)
-{
-	if( recursive_remove(db_path, DLNA_DB_FILE_NAME) == 0 &&
-		recursive_remove(db_path, DLNA_DB_CACHE_DIR) == 0 )
-	{
-		return 0;
-	}
-
-	return -1;
-}
-
-static void
-remove_interface(
-		int index,
-		struct lan_addr_s *addresses,
-		int *address_count)
-{
-	int i;
-
-	for(i = index; i < *address_count - 1; i++)
-	{
-		memcpy(&addresses[i], &addresses[i + 1], sizeof(*addresses));
-	}
-
-	(*address_count)--;
-}
-
-static void
-remove_interface_and_socket(
-		int index, struct lan_addr_s *addresses,
-		int *address_count, int *sockets)
-{
-	int i;
-
-	DPRINTF(E_WARN, L_GENERAL, "interface %s removed.\n",
-		lan_addr[index].if_name);
-
-	close(sockets[index]);
-
-	for(i = index; i < (*address_count) - 1; i++)
-	{
-		sockets[i] = sockets[i + 1];
-	}
-
-	remove_interface(index, addresses, address_count);
-}
-
-static void
-stop_scanning(pid_t *scanner_pid)
-{
-	/* kill the scanner */
-	if(*scanner_pid != 0)
-	{
-		kill(*scanner_pid, SIGTERM);
-		waitpid(*scanner_pid, NULL, 0);
-	}
-
-	scanning = 0;
-	*scanner_pid = 0;
-}
-
-static void
-restart_scanning(pid_t *scanner_pid, int full)
-{
-	size_t l;
-	char *name;
-	struct stat s;
-
-	stop_scanning(scanner_pid);
-
-	if(!full)
-	{
-		/* check a database file */
-		l = strlen(db_path) + strlen(DLNA_DB_FILE_NAME) + 2;
-		name = malloc(l);
-
-		if(name == NULL)
-		{
-			/* terminate */
-			DPRINTF(E_FATAL, L_GENERAL, "Not enough memory.\n");
-		}
-
-		snprintf(name, l, "%s/%s", db_path, DLNA_DB_FILE_NAME);
-
-		if(stat(name, &s) < 0)
-		{
-			/* no the database file found, force a full rescan */
-			full = 1;
-		}
-
-		free(name);
-	}
-
-	if(full)
-	{
-		sqlite3_close(db);
-		db_clean_cache(db_path);
-		open_db(NULL);
-
-		/* the database should be opened here */
-		if( CreateDatabase() != 0 )
-		{
-			DPRINTF(E_FATAL, L_GENERAL,
-				"ERROR: Failed to create sqlite database! Exiting...\n");
-		}
-		sqlite3_close(db);
-	}
-
-	scanning = 1;
-	*scanner_pid = fork();
-
-	if(!*scanner_pid) /* child (scanner) process */
-	{
-		open_db(NULL);
-
-		if( !full )
-		{
-			SETFLAG(UPDATE_SCAN_MASK);
-			db_cleanup_list();
-		}
-
-		DPRINTF(E_DEBUG, L_GENERAL, "rescanning a database...\n");
-		start_scanner(statusfilename);
-
-		sqlite3_close(db);
-
-		free_dirs();
-		freeoptions();
-
-		_exit(EXIT_SUCCESS);
-	}
-	else
-	{
-		scanning = 0;
-		*scanner_pid = 0;
-	}
-}
-
-static void
-minidlna_atexit()
-{
-	/* always remove scanning child */
-	stop_scanning(&scanner_pid);
-}
-
-static void
-read_configuration_updates(
-		int *sockets,
-		pid_t *scanner_pid,
-		pthread_t *inotify_thread)
-{
-	int n_new_lan_addr = 0;
-	struct lan_addr_s new_lan_addr[MAX_LAN_ADDR];
-	char *rescan_type = NULL;
-	char *string, *word;
-	int ifaces = 0;
-
-	DPRINTF(E_INFO, L_GENERAL,
-		"Starting configuration update (%s)...\n", updatefilename);
-
-	if(readoptionsfile(updatefilename) < 0)
-	{
-		/* only error if file exists or using -f */
-		if(access(updatefilename, F_OK) == 0)
-		{
-			DPRINTF(E_ERROR, L_GENERAL,
-				"Error reading configuration file %s\n", updatefilename);
-		}
-	}
-	else
-	{
-		int i;
-
-		for(i=0; i<num_options; i++)
-		{
-			switch(ary_options[i].id)
-			{
-			case UPNPIFNAME:
-				for (string = ary_options[i].value; (word = strtok(string, ",")); string = NULL)
-				{
-					if (ifaces >= MAX_LAN_ADDR)
-					{
-						DPRINTF(E_ERROR, L_GENERAL, "Too many interfaces (max: %d), ignoring %s\n",
-								MAX_LAN_ADDR, word);
-						break;
-					}
-					runtime_vars.ifaces[ifaces++] = word;
-				}
-				reload_ifaces(0);
-				break;
-			case RESCAN:
-				rescan_type = ary_options[i].value;
-				break;
-			default:
-				/* ignore other options */
-				break;
-			}
-		}
-	}
-
-	int i = 0;
-#if 0
-	while(i < n_lan_addr)
-	{
-		if(if_nametoindex(lan_addr[i].if_name) == 0)
-		{
-			/* interface removed from the system */
-			remove_interface_and_socket(i, lan_addr, &n_lan_addr, sockets);
-		}
-		else
-		{
-			int j = 0;
-
-			while(j < n_new_lan_addr &&
-				strcmp(lan_addr[i].if_name, new_lan_addr[j].if_name) != 0)
-			{
-				++j;
-			}
-
-			if(j == n_new_lan_addr)
-			{
-				/* lan_addr[i] removed from the interface list */
-				remove_interface_and_socket(i,
-					lan_addr, &n_lan_addr, sockets);
-			}
-			else
-			{
-				/* new j-th interface is already in the list */
-				remove_interface(j, new_lan_addr, &n_new_lan_addr);
-
-				/* check an IP address change for the old i-th interface */
-				char ip_addr[INET_ADDRSTRLEN + 3] = {'\0'};
-
-				if( getifaddr(lan_addr[i].if_name,
-						ip_addr, sizeof(ip_addr)) >= 0)
-				{
-					struct lan_addr_s current;
-
-					strcpy(current.if_name, lan_addr[i].if_name);
-
-					if(*ip_addr && parselanaddr(&current, ip_addr) == 0)
-					{
-						if( current.addr.s_addr != lan_addr[i].addr.s_addr ||
-							current.mask.s_addr != lan_addr[i].mask.s_addr)
-						{
-							/* address or mask changed */
-
-							memcpy(&lan_addr[i], &current, sizeof(current));
-							close(sockets[i]);
-							sockets[i] = OpenAndConfSSDPNotifySocket(
-								lan_addr[i].addr.s_addr);
-
-							if(sockets[i] >= 0)
-							{
-								DPRINTF(E_WARN, L_GENERAL,
-									"Interface %s changed an IP address.\n",
-									lan_addr[i].if_name);
-								SendSSDPGoodbyeToSocket(sockets[i]);
-							}
-							else
-							{
-								DPRINTF(E_ERROR, L_GENERAL,
-									"Failed to reinitialize %s " \
-									"interface, ignored.\n",
-									lan_addr[i].if_name);
-
-								remove_interface(i, lan_addr, &n_lan_addr);
-								--i;
-							}
-						}
-					}
-				}
-
-				++i;
-			}
-		}
-	}
-
-	/* add new interfaces to the list */
-
-	for(i = 0; i < n_new_lan_addr; i++)
-	{
-		if(n_lan_addr < MAX_LAN_ADDR)
-		{
-			memcpy(&lan_addr[n_lan_addr],
-				&new_lan_addr[i], sizeof(lan_addr[0]));
-			sockets[n_lan_addr] = OpenAndConfSSDPNotifySocket(
-				lan_addr[n_lan_addr].addr.s_addr);
-
-			if(sockets[n_lan_addr] >= 0)
-			{
-				DPRINTF(E_WARN, L_GENERAL, "New interface added: %s\n",
-					lan_addr[n_lan_addr].if_name);
-				SendSSDPGoodbyeToSocket(sockets[n_lan_addr]);
-				n_lan_addr++;
-			}
-		}
-	}
-#endif
-	if(rescan_type != NULL)
-	{
-		int rescan = 0;
-		int full = 0;
-
-		if(strcmp(rescan_type, "full") == 0)
-		{
-			rescan = 1;
-			full = 1;
-		}
-		else if(strcmp(rescan_type, "update") == 0)
-		{
-			rescan = 1;
-		}
-
-		if(rescan)
-		{
-			const int restart_notifier = ((*inotify_thread) != 0);
-
-			DPRINTF(E_DEBUG, L_GENERAL, "stopping...\n");
-
-			/* stop a inotify thread and a scanner process */
-			stop_notifier = 1;
-			stop_scanning(scanner_pid);
-
-			if(restart_notifier)
-			{
-				pthread_join(*inotify_thread, NULL);
-				DPRINTF(E_DEBUG, L_GENERAL, "Notifier thread stopped.\n");
-			}
-
-			stop_notifier = 0;
-			*inotify_thread = 0;
-
-			sqlite3_close(db);
-			restart_scanning(scanner_pid, full);
-			open_db(NULL);
-
-			/* start a notification thread with a blocked SIGCHLD */
-			dlna_signal_block(SIGCHLD);
-			if( restart_notifier &&
-				pthread_create(inotify_thread, NULL, start_inotify, NULL) )
-			{
-				DPRINTF(E_FATAL, L_GENERAL, "ERROR: pthread_create() failed for start_inotify.\n");
-			}
-			dlna_signal_unblock(SIGCHLD);
-		}
-		else
-		{
-			DPRINTF(E_ERROR, L_GENERAL,
-				"Unknown rescan type: %s\n", rescan_type);
-		}
-	} else
-	{
-		DPRINTF(E_DEBUG, L_GENERAL, "No database rescan need.\n");
-	}
-
-	for(i = 0; i < n_lan_addr; i++)
-	{
-		DPRINTF(E_WARN, L_GENERAL, "active: %s\n", lan_addr[i].if_name);
-	}
-}
-
 /* === main === */
 /* process HTTP or SSDP requests */
 int
@@ -1573,8 +1036,6 @@ main(int argc, char **argv)
 	int last_changecnt = 0;
 	pid_t scanner_pid = 0;
 	pthread_t inotify_thread = 0;
-/*	struct media_dir_s *media_path, *last_path;
-	struct album_art_name_s *art_names, *last_name; */
 #ifdef TIVO_SUPPORT
 	uint8_t beacon_interval = 5;
 	int sbeacon = -1;
@@ -1590,19 +1051,6 @@ main(int argc, char **argv)
 	DPRINTF(E_DEBUG, L_GENERAL, "Using locale dir %s\n", bindtextdomain("minidlna", getenv("TEXTDOMAINDIR")));
 	textdomain("minidlna");
 #endif
-
-	for(i = 0; i < MAX_CONNECTION_COUNT; i++)
-	{
-		dlna_connections[i] = INVALID_PID;
-	}
-
-	group_pid = getpid();
-
-	if (atexit(minidlna_kill_group) != 0 ||
-		atexit(minidlna_atexit) != 0)
-	{
-		DPRINTF(E_FATAL, L_GENERAL, "ERROR: atexit() failed.\n");
-	}
 
 	ret = init(argc, argv);
 	if (ret != 0)
@@ -1793,8 +1241,7 @@ main(int argc, char **argv)
 		if (ret < 0)
 		{
 			if(quitting) goto shutdown;
-			if(update_configuration || errno == EINTR || errno == EAGAIN)
-				goto update_config;
+			if(errno == EINTR) continue;
 
 			DPRINTF(E_ERROR, L_GENERAL, "select(all): %s\n", strerror(errno));
 			DPRINTF(E_FATAL, L_GENERAL, "Failed to select open sockets. EXITING\n");
@@ -1882,23 +1329,12 @@ main(int argc, char **argv)
 				Delete_upnphttp(e);
 			}
 		}
-
-update_config:
-
-		if(update_configuration)
-		{
-			dlna_signal_block(SIGHUP);
-/*
-			read_configuration_updates(updatefile, statusfilename,
-				snotify, &scanner_pid, &inotify_thread);
-*/
-			update_configuration = 0;
-			dlna_signal_unblock(SIGHUP);
-		}
 	}
 
 shutdown:
-	stop_scanning(&scanner_pid);
+	/* kill the scanner */
+	if (scanning && scanner_pid)
+		kill(scanner_pid, 9);
 
 	/* close out open sockets */
 	while (upnphttphead.lh_first != NULL)

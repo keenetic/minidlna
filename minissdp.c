@@ -238,7 +238,7 @@ SendSSDPResponse(int s, struct sockaddr_in sockname, int st_no,
 		(st_no > 0 ? known_service_types[st_no] : ""),
 		(st_no > 1 ? "1" : ""),
 		host, (unsigned int)port);
-	//DEBUG DPRINTF(E_DEBUG, L_SSDP, "Sending M-SEARCH response:\n%s", buf);
+	DPRINTF(E_DEBUG, L_SSDP, "Sending M-SEARCH response:\n%s", buf);
 	n = sendto(s, buf, l, 0,
 	           (struct sockaddr *)&sockname, sizeof(struct sockaddr_in) );
 	if (n < 0)
@@ -491,7 +491,7 @@ ProcessSSDPRequest(int s, unsigned short port)
 	{
 		char *loc = NULL, *srv = NULL, *nts = NULL, *nt = NULL;
 		int loc_len = 0;
-		//DEBUG DPRINTF(E_DEBUG, L_SSDP, "Received SSDP notify:\n%.*s", n, bufr);
+		DPRINTF(E_DEBUG, L_SSDP, "Received SSDP notify:\n%.*s", n, bufr);
 		for (i = 0; i < n; i++)
 		{
 			if( bufr[i] == '*' )
@@ -598,9 +598,9 @@ ProcessSSDPRequest(int s, unsigned short port)
 					man_len++;
 			}
 		}
-		/*DPRINTF(E_INFO, L_SSDP, "SSDP M-SEARCH packet received from %s:%d\n",
+		DPRINTF(E_INFO, L_SSDP, "SSDP M-SEARCH packet received from %s:%d\n",
 	           inet_ntoa(sendername.sin_addr),
-	           ntohs(sendername.sin_port) );*/
+	           ntohs(sendername.sin_port) );
 		if (GETFLAG(DLNA_STRICT_MASK) && (ntohs(sendername.sin_port) <= 1024 || ntohs(sendername.sin_port) == 1900))
 		{
 			DPRINTF(E_INFO, L_SSDP, "WARNING: Ignoring invalid SSDP M-SEARCH from %s [bad source port %d]\n",
@@ -836,7 +836,7 @@ SendSSDPGoodbyeToSocket(int sock)
 						 SSDP_MCAST_ADDR, SSDP_PORT,
 						 known_service_types[i], (i>1?"1":""),
 						 uuidvalue, (i>0?"::":""), (i>0?known_service_types[i]:""), (i>1?"1":"") );
-			//DEBUG DPRINTF(E_DEBUG, L_SSDP, "Sending NOTIFY:\n%s", bufr);
+			DPRINTF(E_DEBUG, L_SSDP, "Sending NOTIFY:\n%s", bufr);
 			n = sendto(sock, bufr, l, 0,
 					   (struct sockaddr *)&sockname, sizeof(struct sockaddr_in) );
 			if(n < 0)

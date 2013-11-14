@@ -82,12 +82,6 @@ insert_playlist(const char * path, char * name)
 		             " ('%q', '%q', %d)",
 		             name, path, items);
 	}
-	sql_exec(db, "INSERT into DETAILS"
-	             " (PATH, TIMESTAMP) "
-	             "VALUES"
-	             " ('%q', %ld)",
-	             path, 0);
-
 	return 0;
 }
 
@@ -125,7 +119,7 @@ fill_playlists()
 	struct song_metadata plist;
 	struct stat file;
 	char type[4];
-	sqlite_int64 plID, detailID;
+	int64_t plID, detailID;
 	char sql_buf[] = "SELECT ID, NAME, PATH from PLAYLISTS where ITEMS > FOUND";
 
 	DPRINTF(E_WARN, L_SCANNER, "Parsing playlists...\n");
@@ -133,10 +127,7 @@ fill_playlists()
 	if( sql_get_table(db, sql_buf, &result, &rows, NULL) != SQLITE_OK ) 
 		return -1;
 	if( !rows )
-	{
-		sqlite3_free_table(result);
-		return 0;
-	}
+		goto done;
 
 	rows++;
 	for( i=3; i<rows*3; i++ )
@@ -260,6 +251,7 @@ found:
 		}
 		sql_exec(db, "UPDATE PLAYLISTS set FOUND = %d where ID = %lld", found, plID);
 	}
+done:
 	sqlite3_free_table(result);
 	DPRINTF(E_WARN, L_SCANNER, "Finished parsing playlists.\n");
 

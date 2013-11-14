@@ -42,10 +42,25 @@
 #include <sys/sockio.h>
 #endif
 
+#include "config.h"
+#if HAVE_GETIFADDRS
+#include <ifaddrs.h>
+#ifdef __linux__
+#ifndef AF_LINK
+#define AF_LINK AF_INET
+#endif
+#else
+#include <net/if_dl.h>
+#endif
+#endif
+#ifdef HAVE_NETLINK
+#include <linux/rtnetlink.h>
+#include <linux/netlink.h>
+#endif
 #include "upnpglobalvars.h"
 #include "getifaddr.h"
+#include "minissdp.h"
 #include "log.h"
-#include "minidlnatypes.h"
 
 static int
 getifaddr(const char *ifname, int notify)
@@ -158,110 +173,100 @@ getifaddr(const char *ifname, int notify)
 }
 
 int
-getsysaddr(char * buf, int len)
+getsyshwaddr(char *buf, int len)
 {
-	int i;
-	int s = socket(PF_INET, SOCK_STREAM, 0);
-	struct sockaddr_in addr;
-	struct ifreq ifr;
-	uint32_t mask;
-	int ret = -1;
-
-	for (i=1; i > 0; i++)
-	{
-		ifr.ifr_ifindex = i;
-		if( ioctl(s, SIOCGIFNAME, &ifr) < 0 )
-			break;
-		if(ioctl(s, SIOCGIFADDR, &ifr, sizeof(struct ifreq)) < 0)
-			continue;
-		memcpy(&addr, &ifr.ifr_addr, sizeof(addr));
-		if(strncmp(inet_ntoa(addr.sin_addr), "127.", 4) == 0)
-			continue;
-		if(ioctl(s, SIOCGIFNETMASK, &ifr, sizeof(struct ifreq)) < 0)
-			continue;
-		if(!inet_ntop(AF_INET, &addr.sin_addr, buf, len))
-		{
-			DPRINTF(E_ERROR, L_GENERAL, "inet_ntop(): %s\n", strerror(errno));
-			close(s);
-			break;
-		}
-		ret = 0;
-
-		memcpy(&addr, &ifr.ifr_netmask, sizeof(addr));
-		mask = ntohl(addr.sin_addr.s_addr);
-		for (i = 0; i < 32; i++)
-		{
-			if ((mask >> i) & 1)
-				break;
-		}
-		mask = 32 - i;
-		if (mask)
-		{
-			i = strlen(buf);
-			snprintf(buf+i, len-i, "/%u", mask);
-		}
-		break;
-	}
-	close(s);
-
-	return(ret);
-}
-
-int
-getsyshwaddr(char * buf, int len)
-{
-	struct if_nameindex *ifaces, *if_idx;
 	unsigned char mac[6];
+	int ret = -1;
+#if defined(HAVE_GETIFADDRS) && !defined (__linux__)
+	struct ifaddrs *ifap, *p;
+	struct sockaddr_in *addr_in;
+	uint8_t a;
+
+	if (getifaddrs(&ifap) != 0)
+	{
+		DPRINTF(E_ERROR, L_GENERAL, "getifaddrs(): %s\n", strerror(errno));
+		return -1;
+	}
+	for (p = ifap; p != NULL; p = p->ifa_next)
+	{
+		if (p->ifa_addr && p->ifa_addr->sa_family == AF_LINK)
+		{
+			addr_in = (struct sockaddr_in *)p->ifa_addr;
+			a = (htonl(addr_in->sin_addr.s_addr) >> 0x18) & 0xFF;
+			if (a == 127)
+				continue;
+#ifdef __linux__
+			struct ifreq ifr;
+			int fd;
+			fd = socket(AF_INET, SOCK_DGRAM, 0);
+			if (fd < 0)
+				continue;
+			strncpy(ifr.ifr_name, p->ifa_name, IFNAMSIZ);
+			if (ioctl(fd, SIOCGIFHWADDR, &ifr) < 0)
+			{
+				close(fd);
+				continue;
+			}
+			memcpy(mac, ifr.ifr_hwaddr.sa_data, 6);
+#else
+			struct sockaddr_dl *sdl;
+			sdl = (struct sockaddr_dl*)p->ifa_addr;
+			memcpy(mac, LLADDR(sdl), sdl->sdl_alen);
+#endif
+			if (MACADDR_IS_ZERO(mac))
+				continue;
+			ret = 0;
+			break;
+		}
+	}
+	freeifaddrs(ifap);
+#else
+	struct if_nameindex *ifaces, *if_idx;
 	struct ifreq ifr;
 	int fd;
-	int ret = -1;
 
 	memset(&mac, '\0', sizeof(mac));
 	/* Get the spatially unique node identifier */
 	fd = socket(AF_INET, SOCK_DGRAM, 0);
-	if( fd < 0 )
-		return(ret);
+	if (fd < 0)
+		return ret;
 
 	ifaces = if_nameindex();
-	if(!ifaces)
-		return(ret);
+	if (!ifaces)
+		return ret;
 
-	for(if_idx = ifaces; if_idx->if_index; if_idx++)
+	for (if_idx = ifaces; if_idx->if_index; if_idx++)
 	{
 		strncpy(ifr.ifr_name, if_idx->if_name, IFNAMSIZ);
-		if(ioctl(fd, SIOCGIFFLAGS, &ifr) < 0)
+		if (ioctl(fd, SIOCGIFFLAGS, &ifr) < 0)
 			continue;
-		if(ifr.ifr_ifru.ifru_flags & IFF_LOOPBACK)
+		if (ifr.ifr_ifru.ifru_flags & IFF_LOOPBACK)
 			continue;
-		if( ioctl(fd, SIOCGIFHWADDR, &ifr) < 0 )
+		if (ioctl(fd, SIOCGIFHWADDR, &ifr) < 0)
 			continue;
-		if( MACADDR_IS_ZERO(ifr.ifr_hwaddr.sa_data) )
+		if (MACADDR_IS_ZERO(ifr.ifr_hwaddr.sa_data))
 			continue;
+		memcpy(mac, ifr.ifr_hwaddr.sa_data, 6);
 		ret = 0;
 		break;
 	}
 	if_freenameindex(ifaces);
 	close(fd);
-
-	if(ret == 0)
+#endif
+	if (ret == 0)
 	{
-		if(len > 12)
-		{
-			memmove(mac, ifr.ifr_hwaddr.sa_data, 6);
+		if (len > 12)
 			sprintf(buf, "%02x%02x%02x%02x%02x%02x",
 			        mac[0]&0xFF, mac[1]&0xFF, mac[2]&0xFF,
 			        mac[3]&0xFF, mac[4]&0xFF, mac[5]&0xFF);
-		}
-		else if(len == 6)
-		{
-			memmove(buf, ifr.ifr_hwaddr.sa_data, 6);
-		}
+		else if (len == 6)
+			memmove(buf, mac, 6);
 	}
 	return ret;
 }
 
 int
-get_remote_mac(struct in_addr ip_addr, unsigned char * mac)
+get_remote_mac(struct in_addr ip_addr, unsigned char *mac)
 {
 	struct in_addr arp_ent;
 	FILE * arp;
@@ -270,23 +275,23 @@ get_remote_mac(struct in_addr ip_addr, unsigned char * mac)
 	memset(mac, 0xFF, 6);
 
  	arp = fopen("/proc/net/arp", "r");
-	if( !arp )
+	if (!arp)
 		return 1;
-	while( !feof(arp) )
+	while (!feof(arp))
 	{
 	        matches = fscanf(arp, "%15s 0x%8X 0x%8X %2hhx:%2hhx:%2hhx:%2hhx:%2hhx:%2hhx",
 		                      remote_ip, &hwtype, &flags,
 		                      &mac[0], &mac[1], &mac[2], &mac[3], &mac[4], &mac[5]);
-		if( matches != 9 )
+		if (matches != 9)
 			continue;
 		inet_pton(AF_INET, remote_ip, &arp_ent);
-		if( ip_addr.s_addr == arp_ent.s_addr )
+		if (ip_addr.s_addr == arp_ent.s_addr)
 			break;
 		mac[0] = 0xFF;
 	}
 	fclose(arp);
 
-	if( mac[0] == 0xFF )
+	if (mac[0] == 0xFF)
 	{
 		memset(mac, 0xFF, 6);
 		return 1;
@@ -294,6 +299,7 @@ get_remote_mac(struct in_addr ip_addr, unsigned char * mac)
 
 	return 0;
 }
+
 void
 reload_ifaces(int notify)
 {
@@ -321,77 +327,7 @@ reload_ifaces(int notify)
 			lan_addr[i].str, inet_ntoa(lan_addr[i].mask));
 	}
 }
-/* parselanaddr()
- * parse address with mask
- * ex: 192.168.1.1/24
- * return value : 
- *    0 : ok
- *   -1 : error */
-static int
-parselanaddr(struct lan_addr_s * lan_addr, const char * str)
-{
-	const char * p;
-	int nbits = 24;
-	int n;
-	p = str;
-	while(*p && *p != '/' && !isspace(*p))
-		p++;
-	n = p - str;
-	if(*p == '/')
-	{
-		nbits = atoi(++p);
-		while(*p && !isspace(*p))
-			p++;
-	}
-	if(n>15)
-	{
-		DPRINTF(E_OFF, L_GENERAL, "Error parsing address/mask: %s\n", str);
-		return -1;
-	}
-	memcpy(lan_addr->str, str, n);
-	lan_addr->str[n] = '\0';
-	if(!inet_aton(lan_addr->str, &lan_addr->addr))
-	{
-		DPRINTF(E_OFF, L_GENERAL, "Error parsing address: %s\n", str);
-		return -1;
-	}
-	lan_addr->mask.s_addr = htonl(nbits ? (0xffffffff << (32 - nbits)) : 0);
-	return 0;
-}
 
-#if 0
-void
-get_lan_addresses(
-		const char *const value,
-		struct lan_addr_s *addresses,
-		int *address_count)
-{
-	const char *string, *word;
-	char ip_addr[INET_ADDRSTRLEN + 3] = {'\0'};
-
-	*address_count = 0;
-
-	for( string = value; (word = strtok((char *)string, ",")); string = NULL )
-	{
-		if(*address_count < MAX_LAN_ADDR)
-		{
-			if(getifaddr(word, ip_addr, sizeof(ip_addr)) >= 0)
-			{
-				if( *ip_addr && parselanaddr(&addresses[*address_count], ip_addr) == 0 )
-				{
-					strcpy(addresses[*address_count].if_name, word);
-					(*address_count)++;
-				}
-			}
-		}
-		else
-		{
-			DPRINTF(E_ERROR, L_GENERAL, "Too many listening ips (max: %d), ignoring %s\n",
-					MAX_LAN_ADDR, word);
-		}
-	}
-}
-#endif
 int
 OpenAndConfMonitorSocket(void)
 {
@@ -451,4 +387,3 @@ ProcessMonitorEvent(int s)
 		reload_ifaces(1);
 #endif
 }
-

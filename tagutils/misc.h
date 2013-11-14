@@ -48,6 +48,4 @@ inline __u32 cpu_to_be32(__u32 cpu32);
 
 extern char * sha1_hex(char *key);
 
-int is_utf8(const char *s);
-
 #endif

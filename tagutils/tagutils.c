@@ -23,6 +23,7 @@
 
 #include <ctype.h>
 #include <errno.h>
+#include <id3tag.h>
 #include <stdlib.h>
 #include <stddef.h>
 #include <string.h>
@@ -31,9 +32,12 @@
 #include <time.h>
 #include <sys/time.h>
 #include <netinet/in.h>
+#include <ogg/ogg.h>
+#include <vorbis/codec.h>
+#include <FLAC/metadata.h>
 
 #include "../config.h"
-#ifdef HAVE_ICONV_H
+#ifdef HAVE_ICONV
 #include <iconv.h>
 #endif
 
@@ -42,6 +46,7 @@
 #include "misc.h"
 #include "textutils.h"
 #include "../metadata.h"
+#include "../utils.h"
 #include "../log.h"
 
 struct id3header {
@@ -98,9 +103,12 @@ char *winamp_genre[] = {
 /*
  * Prototype
  */
+#include "tagutils-mp3.h"
 #include "tagutils-aac.h"
-#include "tagutils-lavf.h"
+#include "tagutils-ogg.h"
+#include "tagutils-flc.h"
 #include "tagutils-asf.h"
+#include "tagutils-wav.h"
 #include "tagutils-pcm.h"
 
 static int _get_tags(char *file, struct song_metadata *psong);
@@ -119,11 +127,11 @@ typedef struct {
 
 static taghandler taghandlers[] = {
 	{ "aac", _get_aactags, _get_aacfileinfo                                  },
-	{ "mp3", _get_mp3tags, _get_lavffileinfo                                 },
-	{ "flc", _get_flctags, _get_lavffileinfo                                 },
-	{ "ogg", _get_oggtags, _get_lavffileinfo                                 },
+	{ "mp3", _get_mp3tags, _get_mp3fileinfo                                  },
+	{ "flc", _get_flctags, _get_flcfileinfo                                  },
+	{ "ogg", 0,            _get_oggfileinfo                                  },
 	{ "asf", 0,            _get_asffileinfo                                  },
-	{ "wav", _get_wavtags, _get_lavffileinfo                                 },
+	{ "wav", _get_wavtags, _get_wavfileinfo                                  },
 	{ "pcm", 0,            _get_pcmfileinfo                                  },
 	{ NULL,  0 }
 };
@@ -131,9 +139,13 @@ static taghandler taghandlers[] = {
 
 
 //*********************************************************************************
+#include "tagutils-misc.c"
+#include "tagutils-mp3.c"
 #include "tagutils-aac.c"
-#include "tagutils-lavf.c"
+#include "tagutils-ogg.c"
+#include "tagutils-flc.c"
 #include "tagutils-asf.c"
+#include "tagutils-wav.c"
 #include "tagutils-pcm.c"
 #include "tagutils-plist.c"
 
@@ -253,6 +265,9 @@ int
 readtags(char *path, struct song_metadata *psong, struct stat *stat, char *lang, char *type)
 {
 	char *fname;
+
+	if(lang_index == -1)
+		lang_index = _lang2cp(lang);
 
 	memset((void*)psong, 0, sizeof(struct song_metadata));
 	psong->path = strdup(path);
