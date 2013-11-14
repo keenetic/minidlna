@@ -1364,7 +1364,7 @@ shutdown:
 	if (inotify_thread)
 		pthread_join(inotify_thread, NULL);
 
-	sql_exec(db, "UPDATE SETTINGS set UPDATE_ID = %u", updateID);
+	sql_exec(db, "UPDATE SETTINGS set VALUE = '%u' where KEY = 'UPDATE_ID'", updateID);
 	sqlite3_close(db);
 
 	upnpevents_removeSubscribers();

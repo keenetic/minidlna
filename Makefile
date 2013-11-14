@@ -13,7 +13,7 @@
 #CFLAGS = -Wall -O -D_GNU_SOURCE -g -DDEBUG
 #CFLAGS = -Wall -g -Os -D_GNU_SOURCE
 
-STATIC=1
+STATIC=0
 
 # multithread program should be compiled with -pthread option
 CFLAGS =-DNDEBUG -DZYXEL_KEENETIC -fno-exceptions -Wall -pthread -Os -D_GNU_SOURCE -D_FILE_OFFSET_BITS=64 \
@@ -56,6 +56,7 @@ LDFLAGS += -L$(TOP)/zlib -L$(TOP)/sqlite/.libs -L$(TOP)/jpeg -L$(TOP)/libvorbis/
 	-L$(TOP)/libogg/src/.libs -L$(TOP)/libexif/libexif/.libs -L$(TOP)/flac/src/libFLAC/.libs \
 	-L$(TOP)/ffmpeg/libavutil -L$(TOP)/ffmpeg/libavcodec -L$(TOP)/ffmpeg/libavformat \
 	-L$(TOP)/libid3tag/.libs
+else
 LDFLAGS += -static
 endif
 
