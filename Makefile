@@ -137,9 +137,9 @@ testupnpdescgen:	$(TESTUPNPDESCGENOBJS)
 	@$(CC) $(CFLAGS) -o $@ $(TESTUPNPDESCGENOBJS)
 
 config.h:	genconfig.sh
-	./genconfig.sh
+#	./genconfig.sh
 
-depend:	config.h
+depend:	#config.h
 	makedepend -f$(MAKEFILE_LIST) -Y \
 	$(ALLOBJS:.o=.c) $(TESTUPNPDESCGENOBJS:.o=.c) 2>/dev/null
 
