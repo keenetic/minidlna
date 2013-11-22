@@ -51,4 +51,15 @@ const char *mime_to_ext(const char * mime);
 int make_dir(char * path, mode_t mode);
 unsigned int DJBHash(const char *str, int len);
 
+#ifdef NDM
+#include <dirent.h>
+/* dirs workaround */
+struct dirent *dirent_allocate(DIR *dirp);
+void dirent_free(struct dirent *dentry);
+
+/* signal workaround*/
+void dlna_signal_block(int sig);
+void dlna_signal_unblock(int sig);
+#endif
+
 #endif

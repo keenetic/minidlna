@@ -76,15 +76,13 @@
 #endif
 
 #include "upnpglobalvars.h"
-#include "sql.h"
-#include "dirent.h"
+#include "sql.h"474
 #include "upnphttp.h"
 #include "upnpdescgen.h"
 #include "minidlnapath.h"
 #include "getifaddr.h"
 #include "upnpsoap.h"
 #include "options.h"
-#include "dlna_signal.h"
 #include "utils.h"
 #include "minidlna.h"
 #include "minissdp.h"

@@ -15,23 +15,7 @@
 
 STATIC=0
 
-# multithread program should be compiled with -pthread option
-CFLAGS =-DNDEBUG -DZYXEL_KEENETIC -fno-exceptions -Wall -pthread -Os -D_GNU_SOURCE -D_FILE_OFFSET_BITS=64 \
-	 -DHAVE_LIBAVCODEC_AVCODEC_H -DHAVE_LIBAVFORMAT_AVFORMAT_H \
-	 -I$(STAGING_DIR)/usr/include -I$(STAGING_DIR)/usr/include/ffmpeg \
-	 -I$(STAGING_DIR)/usr/include/libavutil \
-	 -I$(STAGING_DIR)/usr/include/libavcodec \
-	 -I$(STAGING_DIR)/usr/include/libavformat \
-	 -I$(STAGING_DIR)/usr/include/ffmpeg/libavutil \
-	 -I$(STAGING_DIR)/usr/include/ffmpeg/libavcodec \
-	 -I$(STAGING_DIR)/usr/include/ffmpeg/libavformat
-LDFLAGS = -L$(STAGING_DIR)/usr/lib -L$(STAGING_DIR_BUILD)/usr/lib \
-	 -L$(ICONV_PREFIX)/lib \
-	 -L$(INTL_PREFIX)/lib \
-	 -Wl,-rpath-link=$(STAGING_DIR)/usr/lib
-
-
-CFLAGS = -DNDEBUG -DZYXEL_KEENETIC -Wall -g -Os -D_GNU_SOURCE -D_FILE_OFFSET_BITS=64 \
+CFLAGS = -DNDEBUG -DZYXEL_KEENETIC -DNDM -Wall -g -Os -D_GNU_SOURCE -D_FILE_OFFSET_BITS=64 \
 	-ffunction-sections -fdata-sections \
 	-I$(STAGING_DIR)/usr/include \
 	-I$(STAGING_DIR)/usr/include/libavutil \
@@ -71,7 +55,7 @@ SBININSTALLDIR = $(INSTALLPREFIX)/sbin
 ETCINSTALLDIR = $(DESTDIR)/etc
 
 BASEOBJS = minidlna.o upnphttp.o upnpdescgen.o upnpsoap.o \
-           upnpreplyparse.o minixml.o dirent.o dlna_signal.o \
+           upnpreplyparse.o minixml.o \
            getifaddr.o daemonize.o upnpglobalvars.o \
            options.o minissdp.o uuid.o upnpevents.o \
            sql.o utils.o metadata.o scanner.o inotify.o \
@@ -146,8 +130,6 @@ depend:	#config.h
 
 # DO NOT DELETE
 
-dirent.o: dirent.h
-dlna_signal.o: dlna_signal.h
 minidlna.o: config.h upnpglobalvars.h minidlnatypes.h
 minidlna.o: upnphttp.h upnpdescgen.h minidlnapath.h getifaddr.h upnpsoap.h
 minidlna.o: options.h minissdp.h daemonize.h upnpevents.h log.h
