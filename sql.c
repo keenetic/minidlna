@@ -38,7 +38,7 @@ sql_exec(sqlite3 *db, const char *fmt, ...)
 	ret = sqlite3_exec(db, sql, 0, 0, &errMsg);
 	if( ret != SQLITE_OK )
 	{
-		DPRINTF(E_ERROR, L_DB_SQL, "SQL ERROR %d [%s]\n%s\n", ret, errMsg, sql);
+		DPRINTF(E_DEBUG, L_DB_SQL, "SQL ERROR %d [%s] %s", ret, errMsg, sql);
 		if (errMsg)
 			sqlite3_free(errMsg);
 	}
@@ -57,7 +57,7 @@ sql_get_table(sqlite3 *db, const char *sql, char ***pazResult, int *pnRow, int *
 	ret = sqlite3_get_table(db, sql, pazResult, pnRow, pnColumn, &errMsg);
 	if( ret != SQLITE_OK )
 	{
-		DPRINTF(E_ERROR, L_DB_SQL, "SQL ERROR %d [%s]\n%s\n", ret, errMsg, sql);
+		DPRINTF(E_DEBUG, L_DB_SQL, "SQL ERROR %d [%s] %s", ret, errMsg, sql);
 		if (errMsg)
 			sqlite3_free(errMsg);
 	}
@@ -85,7 +85,7 @@ sql_get_int_field(sqlite3 *db, const char *fmt, ...)
 		case SQLITE_OK:
 			break;
 		default:
-			DPRINTF(E_ERROR, L_DB_SQL, "prepare failed: %s\n%s\n", sqlite3_errmsg(db), sql);
+			DPRINTF(E_ERROR, L_DB_SQL, "prepare failed: %s %s", sqlite3_errmsg(db), sql);
 			sqlite3_free(sql);
 			return -1;
 	}
@@ -114,7 +114,7 @@ sql_get_int_field(sqlite3 *db, const char *fmt, ...)
 			ret = sqlite3_column_int(stmt, 0);
 			break;
 		default:
-			DPRINTF(E_WARN, L_DB_SQL, "%s: step failed: %s\n%s\n", __func__, sqlite3_errmsg(db), sql);
+			DPRINTF(E_WARN, L_DB_SQL, "%s: step failed: %s %s", __func__, sqlite3_errmsg(db), sql);
 			ret = -1;
 			break;
  	}
@@ -137,7 +137,7 @@ sql_get_text_field(sqlite3 *db, const char *fmt, ...)
 
 	if (db == NULL)
 	{
-		DPRINTF(E_WARN, L_DB_SQL, "db is NULL\n");
+		DPRINTF(E_WARN, L_DB_SQL, "db is NULL");
 		return NULL;
 	}
 
@@ -150,7 +150,7 @@ sql_get_text_field(sqlite3 *db, const char *fmt, ...)
 		case SQLITE_OK:
 			break;
 		default:
-			DPRINTF(E_ERROR, L_DB_SQL, "prepare failed: %s\n%s\n", sqlite3_errmsg(db), sql);
+			DPRINTF(E_ERROR, L_DB_SQL, "prepare failed: %s %s", sqlite3_errmsg(db), sql);
 			sqlite3_free(sql);
 			return NULL;
 	}
@@ -183,7 +183,7 @@ sql_get_text_field(sqlite3 *db, const char *fmt, ...)
 			len = sqlite3_column_bytes(stmt, 0);
 			if ((str = sqlite3_malloc(len + 1)) == NULL)
 			{
-				DPRINTF(E_ERROR, L_DB_SQL, "malloc failed\n");
+				DPRINTF(E_ERROR, L_DB_SQL, "malloc failed");
 				break;
 			}
 
@@ -191,7 +191,7 @@ sql_get_text_field(sqlite3 *db, const char *fmt, ...)
 			break;
 
 		default:
-			DPRINTF(E_WARN, L_DB_SQL, "SQL step failed: %s\n", sqlite3_errmsg(db));
+			DPRINTF(E_WARN, L_DB_SQL, "SQL step failed: %s", sqlite3_errmsg(db));
 			str = NULL;
 			break;
 	}
@@ -218,7 +218,7 @@ db_upgrade(sqlite3 *db)
 		return 5;
 	if (db_vers < 6)
 	{
-		DPRINTF(E_WARN, L_DB_SQL, "Updating DB version to v%d.\n", 6);
+		DPRINTF(E_WARN, L_DB_SQL, "Updating DB version to v%d.", 6);
 		ret = sql_exec(db, "CREATE TABLE BOOKMARKS ("
 		                        "ID INTEGER PRIMARY KEY, "
 					"SEC INTEGER)");
@@ -227,14 +227,14 @@ db_upgrade(sqlite3 *db)
 	}
 	if (db_vers < 7)
 	{
-		DPRINTF(E_WARN, L_DB_SQL, "Updating DB version to v%d.\n", 7);
+		DPRINTF(E_WARN, L_DB_SQL, "Updating DB version to v%d.", 7);
 		ret = sql_exec(db, "ALTER TABLE DETAILS ADD rotation INTEGER");
 		if( ret != SQLITE_OK )
 			return 7;
 	}
 	if (db_vers < 8)
 	{
-		DPRINTF(E_WARN, L_DB_SQL, "Updating DB version to v%d.\n", 8);
+		DPRINTF(E_WARN, L_DB_SQL, "Updating DB version to v%d.", 8);
 		ret = sql_exec(db, "UPDATE DETAILS set DLNA_PN = replace(DLNA_PN, ';DLNA.ORG_OP=01;DLNA.ORG_CI=0', '')");
 		if( ret != SQLITE_OK )
 			return 8;

@@ -496,7 +496,7 @@ insert_file(char * name, const char * path, const char * parentID, int object)
 		free(orig_name);
 	if( !detailID )
 	{
-		DPRINTF(E_WARN, L_SCANNER, "Unsuccessful getting details for %s!\n", path);
+		DPRINTF(E_WARN, L_SCANNER, "Unsuccessful getting details for %s!", path);
 		return -1;
 	}
 
@@ -724,7 +724,7 @@ ScanDirectory(const char * status_file, int media_dir_size, const char * dir, co
 	if( chdir(dir) != 0 )
 		return;
 
-	DPRINTF(parent?E_INFO:E_WARN, L_SCANNER, "Scanning %s\n", dir);
+	DPRINTF(parent?E_INFO:E_WARN, L_SCANNER, "scanning \"%s\".", dir);
 	switch( dir_type )
 	{
 		case ALL_MEDIA:
@@ -828,7 +828,7 @@ next_entry:
 	}
 	else
 	{
-		DPRINTF(E_WARN, L_SCANNER, "Scanning %s finished (%llu files)!\n", dir, fileno);
+		DPRINTF(E_WARN, L_SCANNER, "scanning \"%s\" finished (%llu files).", dir, fileno);
 	}
 }
 
@@ -839,7 +839,7 @@ start_scanner(const char *const status_file)
 	char name[PATH_MAX];
 
 	if (setpriority(PRIO_PROCESS, 0, 19) == -1)
-		DPRINTF(E_WARN, L_INOTIFY,  "Failed to reduce scanner thread priority\n");
+		DPRINTF(E_WARN, L_INOTIFY,  "failed to reduce scanner thread priority");
 
 #ifdef READYNAS
 	FILE * flag = fopen("/ramfs/.upnp-av_scan", "w");
@@ -872,7 +872,7 @@ start_scanner(const char *const status_file)
 
 	if( GETFLAG(NO_PLAYLIST_MASK) )
 	{
-		DPRINTF(E_WARN, L_SCANNER, "Playlist creation disabled\n");	  
+		DPRINTF(E_WARN, L_SCANNER, "Playlist creation disabled");
 	}
 	else
 	{
@@ -883,6 +883,6 @@ start_scanner(const char *const status_file)
 	//JM: Set up a db version number, so we know if we need to rebuild due to a new structure.
 	sql_exec(db, "pragma user_version = %d;", DB_VERSION);
 
-	DPRINTF(E_DEBUG, L_GENERAL, "vacuum\n");
+	DPRINTF(E_DEBUG, L_GENERAL, "vacuum");
 	sql_exec(db, "vacuum");
 }

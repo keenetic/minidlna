@@ -23,11 +23,12 @@
 #include <stdarg.h>
 #include <string.h>
 #include <time.h>
+#include <sys/syslog.h>
 
 #include "log.h"
 
 static FILE *log_fp = NULL;
-static int default_log_level = E_WARN;
+static int default_log_level = E_INFO;
 int log_level[L_MAX];
 
 char *facility_name[] = {
@@ -53,12 +54,14 @@ char *level_name[] = {
 	0
 };
 
+#if 0
 int
 log_init(const char *fname, const char *debug)
 {
 	int i;
 	FILE *fp;
 	short int log_level_set[L_MAX];
+	int openlog_option;
 
 	if (debug)
 	{
@@ -115,6 +118,7 @@ log_init(const char *fname, const char *debug)
 	if (!(fp = fopen(fname, "a")))
 		return 1;
 	log_fp = fp;
+
 	return 0;
 }
 
@@ -130,12 +134,9 @@ log_err(int level, enum _log_facility facility, char *fname, int lineno, char *f
 	if (level && level>log_level[facility] && level>E_FATAL)
 		return;
 
-	if (!log_fp)
-		log_fp = stdout;
-
 	// user log
 	va_start(ap, fmt);
-	//vsnprintf(errbuf, sizeof(errbuf), fmt, ap);
+
 	if (vasprintf(&errbuf, fmt, ap) == -1)
 	{
 		va_end(ap);
@@ -151,9 +152,9 @@ log_err(int level, enum _log_facility facility, char *fname, int lineno, char *f
 	        tm->tm_hour, tm->tm_min, tm->tm_sec);
 
 	if (level)
-		fprintf(log_fp, "%s:%d: %s: %s", fname, lineno, level_name[level], errbuf);
+		fprintf(log_fp, "%s:%d: %s: %s\n", fname, lineno, level_name[level], errbuf);
 	else
-		fprintf(log_fp, "%s:%d: %s", fname, lineno, errbuf);
+		fprintf(log_fp, "%s:%d: %s\n", fname, lineno, errbuf);
 	fflush(log_fp);
 	free(errbuf);
 
@@ -162,3 +163,82 @@ log_err(int level, enum _log_facility facility, char *fname, int lineno, char *f
 
 	return;
 }
+#else
+
+int
+log_init(const char *fname, const char *debug)
+{
+	int i;
+	FILE *fp;
+	short int log_level_set[L_MAX];
+	int openlog_option;
+
+	for (i=0; i<L_MAX; i++)
+		log_level[i] = default_log_level;
+
+	openlog_option = LOG_CONS;
+	if(debug)
+	{
+//		openlog_option |= LOG_PID;		/* also add pid in log */
+		openlog_option |= LOG_PERROR;	/* also log on stderr */
+	}
+
+	openlog("minidlna", openlog_option, LOG_DAEMON);
+
+	if(!debug)
+	{
+		/* speed things up and ignore LOG_INFO and LOG_DEBUG */
+		setlogmask(LOG_UPTO(LOG_NOTICE));
+	}
+
+	return 0;
+}
+
+void
+log_err(int level, enum _log_facility facility, char *fname, int lineno, char *fmt, ...)
+{
+	//char errbuf[1024];
+	char * errbuf;
+	va_list ap;
+	int syslog_level = LOG_DEBUG;
+
+	if (level && level>log_level[facility] && level>E_FATAL)
+		return;
+
+	// user log
+	va_start(ap, fmt);
+	if (vasprintf(&errbuf, fmt, ap) == -1)
+	{
+		va_end(ap);
+		return;
+	}
+	va_end(ap);
+
+	switch (level) {
+		case E_OFF:
+		case E_FATAL:
+		case E_ERROR:
+			syslog_level = LOG_ERR;
+		break;
+		case E_WARN:
+		case E_INFO:
+			syslog_level = LOG_INFO;
+		break;
+		default:
+			syslog_level = LOG_DEBUG;
+	};
+
+	if (level == E_DEBUG)
+		syslog(syslog_level, "%s:%d: %s: %s", fname, lineno, level_name[level], errbuf);
+	else
+		syslog(syslog_level, "%s", errbuf);
+
+	free(errbuf);
+
+	if (level==E_FATAL)
+		exit(-1);
+
+	return;
+}
+
+#endif

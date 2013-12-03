@@ -84,7 +84,7 @@ readoptionsfile(const char * fname)
 	memset(buffer, 0, sizeof(buffer));
 
 #ifdef DEBUG
-	printf("Reading configuration from file %s\n", fname);
+	fprintf(stdout, "Reading configuration from file %s\n", fname);
 #endif
 
 	if(!(hfile = fopen(fname, "r")))

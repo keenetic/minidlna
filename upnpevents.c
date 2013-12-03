@@ -147,7 +147,7 @@ upnpevents_addSubscriber(const char * eventurl,
                          int timeout)
 {
 	struct subscriber * tmp;
-	DPRINTF(E_DEBUG, L_HTTP, "addSubscriber(%s, %.*s, %d)\n",
+	DPRINTF(E_DEBUG, L_HTTP, "addSubscriber(%s, %.*s, %d)",
 	       eventurl, callbacklen, callback, timeout);
 	tmp = newSubscriber(eventurl, callback, callbacklen);
 	if(!tmp)
@@ -179,7 +179,7 @@ upnpevents_removeSubscriber(const char * sid, int sidlen)
 	struct subscriber * sub;
 	if(!sid)
 		return -1;
-	DPRINTF(E_DEBUG, L_HTTP, "removeSubscriber(%.*s)\n",
+	DPRINTF(E_DEBUG, L_HTTP, "removeSubscriber(%.*s)",
 	       sidlen, sid);
 	for(sub = subscriberlist.lh_first; sub != NULL; sub = sub->entries.le_next) {
 		if(memcmp(sid, sub->uuid, 41) == 0) {
@@ -223,23 +223,23 @@ upnp_event_create_notify(struct subscriber * sub)
 	int flags;
 	obj = calloc(1, sizeof(struct upnp_event_notify));
 	if(!obj) {
-		DPRINTF(E_ERROR, L_HTTP, "%s: calloc(): %s\n", "upnp_event_create_notify", strerror(errno));
+		DPRINTF(E_DEBUG, L_HTTP, "%s: calloc(): %s", "upnp_event_create_notify", strerror(errno));
 		return;
 	}
 	obj->sub = sub;
 	obj->state = ECreated;
 	obj->s = socket(PF_INET, SOCK_STREAM, 0);
 	if(obj->s<0) {
-		DPRINTF(E_ERROR, L_HTTP, "%s: socket(): %s\n", "upnp_event_create_notify", strerror(errno));
+		DPRINTF(E_DEBUG, L_HTTP, "%s: socket(): %s", "upnp_event_create_notify", strerror(errno));
 		goto error;
 	}
 	if((flags = fcntl(obj->s, F_GETFL, 0)) < 0) {
-		DPRINTF(E_ERROR, L_HTTP, "%s: fcntl(..F_GETFL..): %s\n",
+		DPRINTF(E_DEBUG, L_HTTP, "%s: fcntl(..F_GETFL..): %s",
 		       "upnp_event_create_notify", strerror(errno));
 		goto error;
 	}
 	if(fcntl(obj->s, F_SETFL, flags | O_NONBLOCK) < 0) {
-		DPRINTF(E_ERROR, L_HTTP, "%s: fcntl(..F_SETFL..): %s\n",
+		DPRINTF(E_DEBUG, L_HTTP, "%s: fcntl(..F_SETFL..): %s",
 		       "upnp_event_create_notify", strerror(errno));
 		goto error;
 	}
@@ -294,12 +294,12 @@ upnp_event_notify_connect(struct upnp_event_notify * obj)
 	addr.sin_family = AF_INET;
 	inet_aton(obj->addrstr, &addr.sin_addr);
 	addr.sin_port = htons(port);
-	DPRINTF(E_DEBUG, L_HTTP, "%s: '%s' %hu '%s'\n", "upnp_event_notify_connect",
+	DPRINTF(E_DEBUG, L_HTTP, "%s: '%s' %hu '%s'", "upnp_event_notify_connect",
 	       obj->addrstr, port, obj->path);
 	obj->state = EConnecting;
 	if(connect(obj->s, (struct sockaddr *)&addr, sizeof(addr)) < 0) {
 		if(errno != EINPROGRESS && errno != EWOULDBLOCK) {
-			DPRINTF(E_ERROR, L_HTTP, "%s: connect(): %s\n", "upnp_event_notify_connect", strerror(errno));
+			DPRINTF(E_DEBUG, L_HTTP, "%s: connect(): %s", "upnp_event_notify_connect", strerror(errno));
 			obj->state = EError;
 		}
 	}
@@ -349,18 +349,18 @@ static void upnp_event_prepare(struct upnp_event_notify * obj)
 		free(xml);
 		xml = NULL;
 	}
-	DPRINTF(E_DEBUG, L_HTTP, "Sending UPnP Event response:\n%s\n", obj->buffer);
+	DPRINTF(E_DEBUG, L_HTTP, "Sending UPnP Event response: %s", obj->buffer);
 	obj->state = ESending;
 }
 
 static void upnp_event_send(struct upnp_event_notify * obj)
 {
 	int i;
-	//DEBUG DPRINTF(E_DEBUG, L_HTTP, "Sending UPnP Event:\n%s", obj->buffer+obj->sent);
+	//DEBUG DPRINTF(E_DEBUG, L_HTTP, "Sending UPnP Event:%s", obj->buffer+obj->sent);
 	while( obj->sent < obj->tosend ) {
 		i = send(obj->s, obj->buffer + obj->sent, obj->tosend - obj->sent, 0);
 		if(i<0) {
-			DPRINTF(E_WARN, L_HTTP, "%s: send(): %s\n", "upnp_event_send", strerror(errno));
+			DPRINTF(E_DEBUG, L_HTTP, "%s: send(): %s", "upnp_event_send", strerror(errno));
 			obj->state = EError;
 			return;
 		}
@@ -375,11 +375,11 @@ static void upnp_event_recv(struct upnp_event_notify * obj)
 	int n;
 	n = recv(obj->s, obj->buffer, obj->buffersize, 0);
 	if(n<0) {
-		DPRINTF(E_ERROR, L_HTTP, "%s: recv(): %s\n", "upnp_event_recv", strerror(errno));
+		DPRINTF(E_DEBUG, L_HTTP, "%s: recv(): %s", "upnp_event_recv", strerror(errno));
 		obj->state = EError;
 		return;
 	}
-	DPRINTF(E_DEBUG, L_HTTP, "%s: (%dbytes) %.*s\n", "upnp_event_recv",
+	DPRINTF(E_DEBUG, L_HTTP, "%s: (%dbytes) %.*s", "upnp_event_recv",
 	       n, n, obj->buffer);
 	obj->state = EFinished;
 	if(obj->sub)
@@ -410,7 +410,7 @@ upnp_event_process_notify(struct upnp_event_notify * obj)
 		obj->s = -1;
 		break;
 	default:
-		DPRINTF(E_ERROR, L_HTTP, "upnp_event_process_notify: unknown state\n");
+		DPRINTF(E_DEBUG, L_HTTP, "upnp_event_process_notify: unknown state");
 	}
 }
 
@@ -418,7 +418,7 @@ void upnpevents_selectfds(fd_set *readset, fd_set *writeset, int * max_fd)
 {
 	struct upnp_event_notify * obj;
 	for(obj = notifylist.lh_first; obj != NULL; obj = obj->entries.le_next) {
-		DPRINTF(E_DEBUG, L_HTTP, "upnpevents_selectfds: %p %d %d\n",
+		DPRINTF(E_DEBUG, L_HTTP, "upnpevents_selectfds: %p %d %d",
 		       obj, obj->state, obj->s);
 		if(obj->s >= 0) {
 			switch(obj->state) {
@@ -452,7 +452,7 @@ void upnpevents_processfds(fd_set *readset, fd_set *writeset)
 	struct subscriber * subnext;
 	time_t curtime;
 	for(obj = notifylist.lh_first; obj != NULL; obj = obj->entries.le_next) {
-		DPRINTF(E_DEBUG, L_HTTP, "%s: %p %d %d %d %d\n",
+		DPRINTF(E_DEBUG, L_HTTP, "%s: %p %d %d %d %d",
 		       "upnpevents_processfds", obj, obj->state, obj->s,
 		       FD_ISSET(obj->s, readset), FD_ISSET(obj->s, writeset));
 		if(obj->s >= 0) {

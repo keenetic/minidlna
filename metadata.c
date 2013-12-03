@@ -198,12 +198,12 @@ check_for_captions(const char * path, sqlite_int64 detailID)
 		                            " and MIME > 'video/' and MIME <= 'video/z') limit 1", file, file);
 		if( id )
 		{
-			//DEBUG DPRINTF(E_DEBUG, L_METADATA, "New file %s looks like a caption file.\n", path);
+			//DEBUG DPRINTF(E_DEBUG, L_METADATA, "New file %s looks like a caption file.", path);
 			detailID = strtoll(id, NULL, 10);
 		}
 		else
 		{
-			//DPRINTF(E_DEBUG, L_METADATA, "No file found for caption %s.\n", path);
+			//DPRINTF(E_DEBUG, L_METADATA, "No file found for caption %s.", path);
 			goto no_source_video;
 		}
 	}
@@ -235,10 +235,10 @@ parse_nfo(const char * path, metadata_t * m)
 	if( stat(path, &file) != 0 ||
 	    file.st_size > 65536 )
 	{
-		DPRINTF(E_INFO, L_METADATA, "Not parsing very large .nfo file %s\n", path);
+		DPRINTF(E_INFO, L_METADATA, "Not parsing very large .nfo file %s", path);
 		return;
 	}
-	DPRINTF(E_DEBUG, L_METADATA, "Parsing .nfo file: %s\n", path);
+	DPRINTF(E_DEBUG, L_METADATA, "Parsing .nfo file: %s", path);
 	nfo = fopen(path, "r");
 	if( !nfo )
 		return;
@@ -390,7 +390,7 @@ GetAudioMetadata(const char * path, char * name)
 	}
 	else
 	{
-		DPRINTF(E_WARN, L_GENERAL, "Unhandled file extension on %s\n", path);
+		DPRINTF(E_WARN, L_GENERAL, "Unhandled file extension on %s", path);
 		return 0;
 	}
 
@@ -404,7 +404,7 @@ GetAudioMetadata(const char * path, char * name)
 
 	if( readtags((char *)path, &song, &file, lang, type) != 0 )
 	{
-		DPRINTF(E_WARN, L_GENERAL, "Cannot extract tags from %s!\n", path);
+		DPRINTF(E_WARN, L_GENERAL, "Cannot extract tags from %s!", path);
         	freetags(&song);
 		free_metadata(&m, free_flags);
 		return 0;
@@ -738,7 +738,7 @@ GetVideoMetadata(const char * path, char * name)
 	ret = lav_open(&ctx, path);
 	if( ret != 0 )
 	{
-		DPRINTF(E_WARN, L_METADATA, "Opening %s failed!\n", path);
+		DPRINTF(E_WARN, L_METADATA, "Opening %s failed!", path);
 		return 0;
 	}
 	//dump_format(ctx, 0, NULL, 0);
@@ -764,7 +764,7 @@ GetVideoMetadata(const char * path, char * name)
 	{
 		lav_close(ctx);
 		if( !is_audio(path) )
-			DPRINTF(E_DEBUG, L_METADATA, "File %s does not contain a video stream.\n", basename(path));
+			DPRINTF(E_DEBUG, L_METADATA, "File %s does not contain a video stream.", basename(path));
 		return 0;
 	}
 
@@ -798,7 +798,7 @@ GetVideoMetadata(const char * path, char * name)
 				if( !ac->extradata_size ||
 				    !ac->extradata )
 				{
-					DPRINTF(E_DEBUG, L_METADATA, "No AAC type\n");
+					DPRINTF(E_DEBUG, L_METADATA, "No AAC type");
 				}
 				else
 				{
@@ -814,7 +814,7 @@ GetVideoMetadata(const char * path, char * name)
 						if( ac->sample_rate < 8000 ||
 						    ac->sample_rate > 48000 )
 						{
-							DPRINTF(E_DEBUG, L_METADATA, "Unsupported AAC: sample rate is not 8000 < %d < 48000\n",
+							DPRINTF(E_DEBUG, L_METADATA, "Unsupported AAC: sample rate is not 8000 < %d < 48000",
 								ac->sample_rate);
 							break;
 						}
@@ -826,12 +826,12 @@ GetVideoMetadata(const char * path, char * name)
 							 ac->bit_rate <= 1440000 )
 							audio_profile = PROFILE_AUDIO_AAC_MULT5;
 						else
-							DPRINTF(E_DEBUG, L_METADATA, "Unhandled AAC: %d channels, %d bitrate\n",
+							DPRINTF(E_DEBUG, L_METADATA, "Unhandled AAC: %d channels, %d bitrate",
 								ac->channels,
 								ac->bit_rate);
 						break;
 					default:
-						DPRINTF(E_DEBUG, L_METADATA, "Unhandled AAC type [%d]\n", aac_type);
+						DPRINTF(E_DEBUG, L_METADATA, "Unhandled AAC type [%d]", aac_type);
 						break;
 				}
 				break;
@@ -864,7 +864,7 @@ GetVideoMetadata(const char * path, char * name)
 				    (ac->codec_id < CODEC_ID_ADPCM_IMA_QT) )
 					audio_profile = PROFILE_AUDIO_PCM;
 				else
-					DPRINTF(E_DEBUG, L_METADATA, "Unhandled audio codec [0x%X]\n", ac->codec_id);
+					DPRINTF(E_DEBUG, L_METADATA, "Unhandled audio codec [0x%X]", ac->codec_id);
 				break;
 		}
 		asprintf(&m.frequency, "%u", ac->sample_rate);
@@ -880,7 +880,7 @@ GetVideoMetadata(const char * path, char * name)
 		int off;
 		int duration, hours, min, sec, ms;
 		ts_timestamp_t ts_timestamp = NONE;
-		DPRINTF(E_DEBUG, L_METADATA, "Container: '%s' [%s]\n", ctx->iformat->name, basename(path));
+		DPRINTF(E_INFO, L_METADATA, "container: '%s' [%s].", ctx->iformat->name, basename(path));
 		asprintf(&m.resolution, "%dx%d", vc->width, vc->height);
 		if( ctx->bit_rate > 8 )
 			asprintf(&m.bitrate, "%u", ctx->bit_rate / 8);
@@ -940,7 +940,7 @@ GetVideoMetadata(const char * path, char * name)
 				{
 					int raw_packet_size;
 					int dlna_ts_present = dlna_timestamp_is_present(path, &raw_packet_size);
-					DPRINTF(E_DEBUG, L_METADATA, "Stream %d of %s is %s MPEG2 TS packet size %d\n",
+					DPRINTF(E_DEBUG, L_METADATA, "Stream %d of %s is %s MPEG2 TS packet size %d",
 						video_stream, basename(path), m.resolution, raw_packet_size);
 					off += sprintf(m.dlna_pn+off, "TS_");
 					if( (vc->width  >= 1280) &&
@@ -966,7 +966,7 @@ GetVideoMetadata(const char * path, char * name)
 					}
 					else if( raw_packet_size != MPEG_TS_PACKET_LENGTH )
 					{
-						DPRINTF(E_DEBUG, L_METADATA, "Unsupported DLNA TS packet size [%d] (%s)\n",
+						DPRINTF(E_DEBUG, L_METADATA, "Unsupported DLNA TS packet size [%d] (%s)",
 							raw_packet_size, basename(path));
 						free(m.dlna_pn);
 						m.dlna_pn = NULL;
@@ -988,7 +988,7 @@ GetVideoMetadata(const char * path, char * name)
 				}
 				else if( strcmp(ctx->iformat->name, "mpeg") == 0 )
 				{
-					DPRINTF(E_DEBUG, L_METADATA, "Stream %d of %s is %s MPEG2 PS\n",
+					DPRINTF(E_DEBUG, L_METADATA, "Stream %d of %s is %s MPEG2 PS",
 						video_stream, basename(path), m.resolution);
 					off += sprintf(m.dlna_pn+off, "PS_");
 					if( (vc->height == 576) ||
@@ -1000,7 +1000,7 @@ GetVideoMetadata(const char * path, char * name)
 				}
 				else
 				{
-					DPRINTF(E_DEBUG, L_METADATA, "Stream %d of %s [%s] is %s non-DLNA MPEG2\n",
+					DPRINTF(E_DEBUG, L_METADATA, "Stream %d of %s [%s] is %s non-DLNA MPEG2",
 						video_stream, basename(path), ctx->iformat->name, m.resolution);
 					free(m.dlna_pn);
 					m.dlna_pn = NULL;
@@ -1077,7 +1077,7 @@ GetVideoMetadata(const char * path, char * name)
 							if( vc->profile != FF_PROFILE_H264_BASELINE &&
 							    vc->profile != FF_PROFILE_H264_MAIN )
 							{
-								DPRINTF(E_DEBUG, L_METADATA, "Unknown AVC profile %d; assuming MP. [%s]\n",
+								DPRINTF(E_DEBUG, L_METADATA, "Unknown AVC profile %d; assuming MP. [%s]",
 									vc->profile, basename(path));
 							}
 							if( vc->width  <= 720 &&
@@ -1094,7 +1094,7 @@ GetVideoMetadata(const char * path, char * name)
 							}
 							else
 							{
-								DPRINTF(E_DEBUG, L_METADATA, "Unsupported h.264 video profile! [%s, %dx%d, %dbps : %s]\n",
+								DPRINTF(E_DEBUG, L_METADATA, "Unsupported h.264 video profile! [%s, %dx%d, %dbps : %s]",
 									m.dlna_pn, vc->width, vc->height, vc->bit_rate, basename(path));
 								free(m.dlna_pn);
 								m.dlna_pn = NULL;
@@ -1111,7 +1111,7 @@ GetVideoMetadata(const char * path, char * name)
 							}
 							else
 							{
-								DPRINTF(E_DEBUG, L_METADATA, "Unsupported h.264 HP video profile! [%dbps, %d audio : %s]\n",
+								DPRINTF(E_DEBUG, L_METADATA, "Unsupported h.264 HP video profile! [%dbps, %d audio : %s]",
 									vc->bit_rate, audio_profile, basename(path));
 								free(m.dlna_pn);
 								m.dlna_pn = NULL;
@@ -1135,7 +1135,7 @@ GetVideoMetadata(const char * path, char * name)
 							off += sprintf(m.dlna_pn+off, "AAC_MULT5");
 							break;
 						default:
-							DPRINTF(E_DEBUG, L_METADATA, "No DLNA profile found for %s file [%s]\n",
+							DPRINTF(E_DEBUG, L_METADATA, "No DLNA profile found for %s file [%s]",
 								m.dlna_pn, basename(path));
 							free(m.dlna_pn);
 							m.dlna_pn = NULL;
@@ -1153,7 +1153,7 @@ GetVideoMetadata(const char * path, char * name)
 					}
 					else if( raw_packet_size != MPEG_TS_PACKET_LENGTH )
 					{
-						DPRINTF(E_DEBUG, L_METADATA, "Unsupported DLNA TS packet size [%d] (%s)\n",
+						DPRINTF(E_DEBUG, L_METADATA, "Unsupported DLNA TS packet size [%d] (%s)",
 							raw_packet_size, basename(path));
 						free(m.dlna_pn);
 						m.dlna_pn = NULL;
@@ -1281,7 +1281,7 @@ GetVideoMetadata(const char * path, char * name)
 						}
 						if( strlen(m.dlna_pn) <= 11 )
 						{
-							DPRINTF(E_DEBUG, L_METADATA, "No DLNA profile found for %s file %s\n",
+							DPRINTF(E_DEBUG, L_METADATA, "No DLNA profile found for %s file %s",
 								m.dlna_pn, basename(path));
 							free(m.dlna_pn);
 							m.dlna_pn = NULL;
@@ -1297,7 +1297,7 @@ GetVideoMetadata(const char * path, char * name)
 						}
 						break;
 					default:
-						DPRINTF(E_DEBUG, L_METADATA, "AVC profile [%d] not recognized for file %s\n",
+						DPRINTF(E_DEBUG, L_METADATA, "AVC profile [%d] not recognized for file %s",
 							vc->profile, basename(path));
 						free(m.dlna_pn);
 						m.dlna_pn = NULL;
@@ -1309,14 +1309,14 @@ GetVideoMetadata(const char * path, char * name)
 					free(m.dlna_pn);
 					m.dlna_pn = NULL;
 				}
-				DPRINTF(E_DEBUG, L_METADATA, "Stream %d of %s is h.264\n", video_stream, basename(path));
+				DPRINTF(E_DEBUG, L_METADATA, "Stream %d of %s is h.264", video_stream, basename(path));
 				break;
 			case CODEC_ID_MPEG4:
         			fourcc[0] = vc->codec_tag     & 0xff;
 			        fourcc[1] = vc->codec_tag>>8  & 0xff;
 			        fourcc[2] = vc->codec_tag>>16 & 0xff;
 			        fourcc[3] = vc->codec_tag>>24 & 0xff;
-				DPRINTF(E_DEBUG, L_METADATA, "Stream %d of %s is MPEG4 [%c%c%c%c/0x%X]\n",
+				DPRINTF(E_DEBUG, L_METADATA, "Stream %d of %s is MPEG4 [%c%c%c%c/0x%X]",
 					video_stream, basename(path),
 					isprint(fourcc[0]) ? fourcc[0] : '_',
 					isprint(fourcc[1]) ? fourcc[1] : '_',
@@ -1341,7 +1341,7 @@ GetVideoMetadata(const char * path, char * name)
 								off += sprintf(m.dlna_pn+off, "3GPP_SP_L0B_AMR");
 								break;
 							default:
-								DPRINTF(E_DEBUG, L_METADATA, "No DLNA profile found for MPEG4-P2 3GP/0x%X file %s\n",
+								DPRINTF(E_DEBUG, L_METADATA, "No DLNA profile found for MPEG4-P2 3GP/0x%X file %s",
 								        ac->codec_id, basename(path));
 								free(m.dlna_pn);
 								m.dlna_pn = NULL;
@@ -1364,7 +1364,7 @@ GetVideoMetadata(const char * path, char * name)
 						}
 						else
 						{
-							DPRINTF(E_DEBUG, L_METADATA, "Unsupported h.264 video profile! [%dx%d, %dbps]\n",
+							DPRINTF(E_DEBUG, L_METADATA, "Unsupported h.264 video profile! [%dx%d, %dbps]",
 								vc->width,
 								vc->height,
 								ctx->bit_rate);
@@ -1386,12 +1386,12 @@ GetVideoMetadata(const char * path, char * name)
 			case CODEC_ID_VC1:
 				if( strcmp(ctx->iformat->name, "asf") != 0 )
 				{
-					DPRINTF(E_DEBUG, L_METADATA, "Skipping DLNA parsing for non-ASF VC1 file %s\n", path);
+					DPRINTF(E_DEBUG, L_METADATA, "Skipping DLNA parsing for non-ASF VC1 file %s", path);
 					break;
 				}
 				m.dlna_pn = malloc(64);
 				off = sprintf(m.dlna_pn, "WMV");
-				DPRINTF(E_DEBUG, L_METADATA, "Stream %d of %s is VC1\n", video_stream, basename(path));
+				DPRINTF(E_DEBUG, L_METADATA, "Stream %d of %s is VC1", video_stream, basename(path));
 				asprintf(&m.mime, "video/x-ms-wmv");
 				if( (vc->width  <= 176) &&
 				    (vc->height <= 144) &&
@@ -1407,7 +1407,7 @@ GetVideoMetadata(const char * path, char * name)
 							off += sprintf(m.dlna_pn+off, "BASE");
 							break;
 						default:
-							DPRINTF(E_DEBUG, L_METADATA, "No DLNA profile found for WMVSPLL/0x%X file %s\n",
+							DPRINTF(E_DEBUG, L_METADATA, "No DLNA profile found for WMVSPLL/0x%X file %s",
 								audio_profile, basename(path));
 							free(m.dlna_pn);
 							m.dlna_pn = NULL;
@@ -1429,7 +1429,7 @@ GetVideoMetadata(const char * path, char * name)
 							off += sprintf(m.dlna_pn+off, "BASE");
 							break;
 						default:
-							DPRINTF(E_DEBUG, L_METADATA, "No DLNA profile found for WMVSPML/0x%X file %s\n",
+							DPRINTF(E_DEBUG, L_METADATA, "No DLNA profile found for WMVSPML/0x%X file %s",
 								audio_profile, basename(path));
 							free(m.dlna_pn);
 							m.dlna_pn = NULL;
@@ -1453,7 +1453,7 @@ GetVideoMetadata(const char * path, char * name)
 							off += sprintf(m.dlna_pn+off, "BASE");
 							break;
 						default:
-							DPRINTF(E_DEBUG, L_METADATA, "No DLNA profile found for WMVMED/0x%X file %s\n",
+							DPRINTF(E_DEBUG, L_METADATA, "No DLNA profile found for WMVMED/0x%X file %s",
 								audio_profile, basename(path));
 							free(m.dlna_pn);
 							m.dlna_pn = NULL;
@@ -1474,7 +1474,7 @@ GetVideoMetadata(const char * path, char * name)
 							off += sprintf(m.dlna_pn+off, "FULL");
 							break;
 						default:
-							DPRINTF(E_DEBUG, L_METADATA, "No DLNA profile found for WMVHIGH/0x%X file %s\n",
+							DPRINTF(E_DEBUG, L_METADATA, "No DLNA profile found for WMVHIGH/0x%X file %s",
 								audio_profile, basename(path));
 							free(m.dlna_pn);
 							m.dlna_pn = NULL;
@@ -1485,7 +1485,7 @@ GetVideoMetadata(const char * path, char * name)
 			case CODEC_ID_MSMPEG4V3:
 				asprintf(&m.mime, "video/x-msvideo");
 			default:
-				DPRINTF(E_DEBUG, L_METADATA, "Stream %d of %s is %s [type %d]\n",
+				DPRINTF(E_DEBUG, L_METADATA, "Stream %d of %s is %s [type %d]",
 					video_stream, basename(path), m.resolution, vc->codec_id);
 				break;
 		}
@@ -1508,7 +1508,7 @@ GetVideoMetadata(const char * path, char * name)
 		else if( strcmp(ctx->iformat->name, "flv") == 0 )
 			asprintf(&m.mime, "video/x-flv");
 		else
-			DPRINTF(E_WARN, L_METADATA, "%s: Unhandled format: %s\n", path, ctx->iformat->name);
+			DPRINTF(E_WARN, L_METADATA, "%s: Unhandled format: %s", path, ctx->iformat->name);
 	}
 
 	if( strcmp(ctx->iformat->name, "asf") == 0 )
@@ -1595,7 +1595,7 @@ video_no_dlna:
                            m.mime, album_art);
 	if( ret != SQLITE_OK )
 	{
-		fprintf(stderr, "Error inserting details for '%s'!\n", path);
+		DPRINTF(E_WARN, L_METADATA, "Error inserting details for '%s'!", path);
 		ret = 0;
 	}
 	else

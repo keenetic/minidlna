@@ -165,13 +165,13 @@ OpenAndConfHTTPSocket(unsigned short port)
 
 	if( (s = socket(PF_INET, SOCK_STREAM, 0)) < 0)
 	{
-		DPRINTF(E_ERROR, L_GENERAL, "socket(http): %s\n", strerror(errno));
+		DPRINTF(E_ERROR, L_GENERAL, "socket(http): %s", strerror(errno));
 		return -1;
 	}
 
 	if(setsockopt(s, SOL_SOCKET, SO_REUSEADDR, &i, sizeof(i)) < 0)
 	{
-		DPRINTF(E_WARN, L_GENERAL, "setsockopt(http, SO_REUSEADDR): %s\n", strerror(errno));
+		DPRINTF(E_WARN, L_GENERAL, "setsockopt(http, SO_REUSEADDR): %s", strerror(errno));
 	}
 
 	memset(&listenname, 0, sizeof(struct sockaddr_in));
@@ -181,14 +181,14 @@ OpenAndConfHTTPSocket(unsigned short port)
 
 	if(bind(s, (struct sockaddr *)&listenname, sizeof(struct sockaddr_in)) < 0)
 	{
-		DPRINTF(E_ERROR, L_GENERAL, "bind(http): %s\n", strerror(errno));
+		DPRINTF(E_ERROR, L_GENERAL, "bind(http): %s", strerror(errno));
 		close(s);
 		return -1;
 	}
 
 	if(listen(s, 6) < 0)
 	{
-		DPRINTF(E_ERROR, L_GENERAL, "listen(http): %s\n", strerror(errno));
+		DPRINTF(E_ERROR, L_GENERAL, "listen(http): %s", strerror(errno));
 		close(s);
 		return -1;
 	}
@@ -274,14 +274,14 @@ parselanaddr(struct lan_addr_s * lan_addr, const char * str)
 	}
 	if(n>15)
 	{
-		DPRINTF(E_OFF, L_GENERAL, "Error parsing address/mask: %s\n", str);
+		DPRINTF(E_OFF, L_GENERAL, "error parsing address/mask: %s.", str);
 		return -1;
 	}
 	memcpy(lan_addr->str, str, n);
 	lan_addr->str[n] = '\0';
 	if(!inet_aton(lan_addr->str, &lan_addr->addr))
 	{
-		DPRINTF(E_OFF, L_GENERAL, "Error parsing address: %s\n", str);
+		DPRINTF(E_OFF, L_GENERAL, "error parsing address: %s.", str);
 		return -1;
 	}
 	lan_addr->mask.s_addr = htonl(nbits ? (0xffffffff << (32 - nbits)) : 0);
@@ -400,7 +400,7 @@ open_db(void)
 	}
 	if( sqlite3_open(path, &db) != SQLITE_OK )
 	{
-		DPRINTF(E_FATAL, L_GENERAL, "ERROR: Failed to open sqlite database!  Exiting...\n");
+		DPRINTF(E_FATAL, L_GENERAL, "ERROR: Failed to open sqlite database. Exiting.");
 	}
 	sqlite3_busy_timeout(db, 5000);
 	sql_exec(db, "pragma page_size = 4096");
@@ -436,7 +436,7 @@ get_lan_addresses(
 		}
 		else
 		{
-			DPRINTF(E_ERROR, L_GENERAL, "Too many listening ips (max: %d), ignoring %s\n",
+			DPRINTF(E_ERROR, L_GENERAL, "Too many listening ips (max: %d), ignoring %s",
 					MAX_LAN_ADDR, word);
 		}
 	}
@@ -489,7 +489,7 @@ init(	int argc, char * * argv,
 	/* set up uuid based on mac address */
 	if( getsyshwaddr(mac_str, sizeof(mac_str)) < 0 )
 	{
-		DPRINTF(E_OFF, L_GENERAL, "No MAC address found.  Falling back to generic UUID.\n");
+		DPRINTF(E_OFF, L_GENERAL, "no MAC address found. Falling back to generic UUID.");
 		strcpy(mac_str, "554e4b4e4f57");
 	}
 	strcpy(uuidvalue+5, "4d696e69-444c-164e-9d41-");
@@ -507,7 +507,7 @@ init(	int argc, char * * argv,
 	{
 		/* only error if file exists or using -f */
 		if(access(optionsfile, F_OK) == 0 || options_flag)
-			DPRINTF(E_ERROR, L_GENERAL, "Error reading configuration file %s\n", optionsfile);
+			DPRINTF(E_ERROR, L_GENERAL, "error reading configuration file %s", optionsfile);
 	}
 	else
 	{
@@ -527,7 +527,7 @@ init(	int argc, char * * argv,
 				}
 				else
 				{
-					DPRINTF(E_ERROR, L_GENERAL, "Too many listening ips (max: %d), ignoring %s\n",
+					DPRINTF(E_ERROR, L_GENERAL, "Too many listening ips (max: %d), ignoring %s",
 			    		    MAX_LAN_ADDR, ary_options[i].value);
 				}
 				break; */
@@ -576,7 +576,7 @@ init(	int argc, char * * argv,
 						path = (myval ? myval:ary_options[i].value);
 					if( access(path, F_OK) != 0 )
 					{
-						DPRINTF(E_ERROR, L_GENERAL, "Media directory \"%s\" not accessible! [%s]\n",
+						DPRINTF(E_ERROR, L_GENERAL, "media directory \"%s\" not accessible. [%s]",
 						        path, strerror(errno));
 						break;
 					}
@@ -597,7 +597,7 @@ init(	int argc, char * * argv,
 					}
 					break;
 				default:
-					DPRINTF(E_ERROR, L_GENERAL, "Media directory entry not understood! [%s]\n",
+					DPRINTF(E_ERROR, L_GENERAL, "media directory entry not understood. [%s]",
 					        ary_options[i].value);
 					break;
 				}
@@ -633,7 +633,7 @@ init(	int argc, char * * argv,
 				make_dir(path, S_ISVTX|S_IRWXU|S_IRWXG|S_IRWXO);
 				if( access(path, F_OK) != 0 )
 				{
-					DPRINTF(E_FATAL, L_GENERAL, "Database path not accessible! [%s]\n", path);
+					DPRINTF(E_FATAL, L_GENERAL, "database path not accessible [%s].", path);
 					break;
 				}
 				strncpyt(db_path, path, PATH_MAX);
@@ -645,7 +645,7 @@ init(	int argc, char * * argv,
 				make_dir(path, S_ISVTX|S_IRWXU|S_IRWXG|S_IRWXO);
 				if( access(path, F_OK) != 0 )
 				{
-					DPRINTF(E_FATAL, L_GENERAL, "Log path not accessible! [%s]\n", path);
+					DPRINTF(E_FATAL, L_GENERAL, "log path not accessible [%s].", path);
 					break;
 				}
 				strncpyt(log_path, path, PATH_MAX);
@@ -688,7 +688,7 @@ init(	int argc, char * * argv,
 					runtime_vars.root_container = IMAGE_ID;
 					break;
 				default:
-					DPRINTF(E_ERROR, L_GENERAL, "Invalid root container! [%s]\n",
+					DPRINTF(E_ERROR, L_GENERAL, "invalid root container [%s].",
 						ary_options[i].value);
 					break;
 				}
@@ -700,7 +700,7 @@ init(	int argc, char * * argv,
 				/* ignore here */
 				break;
 			default:
-				DPRINTF(E_ERROR, L_GENERAL, "Unknown option in file %s\n",
+				DPRINTF(E_ERROR, L_GENERAL, "unknown option in file %s.",
 				        optionsfile);
 			}
 		}
@@ -720,7 +720,7 @@ init(	int argc, char * * argv,
 	{
 		if(argv[i][0]!='-')
 		{
-			DPRINTF(E_ERROR, L_GENERAL, "Unknown option: %s\n", argv[i]);
+			DPRINTF(E_ERROR, L_GENERAL, "unknown option: %s", argv[i]);
 		}
 		else if(strcmp(argv[i], "--help")==0)
 		{
@@ -733,31 +733,31 @@ init(	int argc, char * * argv,
 			if(i+1 < argc)
 				runtime_vars.notify_interval = atoi(argv[++i]);
 			else
-				DPRINTF(E_ERROR, L_GENERAL, "Option -%c takes one argument.\n", argv[i][1]);
+				DPRINTF(E_ERROR, L_GENERAL, "option -%c takes one argument.", argv[i][1]);
 			break;
 		case 's':
 			if(i+1 < argc)
 				strncpyt(serialnumber, argv[++i], SERIALNUMBER_MAX_LEN);
 			else
-				DPRINTF(E_ERROR, L_GENERAL, "Option -%c takes one argument.\n", argv[i][1]);
+				DPRINTF(E_ERROR, L_GENERAL, "option -%c takes one argument.", argv[i][1]);
 			break;
 		case 'm':
 			if(i+1 < argc)
 				strncpyt(modelnumber, argv[++i], MODELNUMBER_MAX_LEN);
 			else
-				DPRINTF(E_ERROR, L_GENERAL, "Option -%c takes one argument.\n", argv[i][1]);
+				DPRINTF(E_ERROR, L_GENERAL, "option -%c takes one argument.", argv[i][1]);
 			break;
 		case 'p':
 			if(i+1 < argc)
 				runtime_vars.port = atoi(argv[++i]);
 			else
-				DPRINTF(E_ERROR, L_GENERAL, "Option -%c takes one argument.\n", argv[i][1]);
+				DPRINTF(E_ERROR, L_GENERAL, "option -%c takes one argument.", argv[i][1]);
 			break;
 		case 'P':
 			if(i+1 < argc)
 				pidfilename = argv[++i];
 			else
-				DPRINTF(E_ERROR, L_GENERAL, "Option -%c takes one argument.\n", argv[i][1]);
+				DPRINTF(E_ERROR, L_GENERAL, "option -%c takes one argument.", argv[i][1]);
 			break;
 		case 'd':
 			debug_flag = 1;
@@ -771,7 +771,7 @@ init(	int argc, char * * argv,
 			if(i+1 < argc)
 				presurl = argv[++i];
 			else
-				DPRINTF(E_ERROR, L_GENERAL, "Option -%c takes one argument.\n", argv[i][1]);
+				DPRINTF(E_ERROR, L_GENERAL, "option -%c takes one argument.", argv[i][1]);
 			break;
 /*		case 'a':
 			if(i+1 < argc)
@@ -795,12 +795,12 @@ init(	int argc, char * * argv,
 				}
 				else
 				{
-					DPRINTF(E_ERROR, L_GENERAL, "Too many listening ips (max: %d), ignoring %s\n",
+					DPRINTF(E_ERROR, L_GENERAL, "Too many listening ips (max: %d), ignoring %s",
 				    	    MAX_LAN_ADDR, argv[i]);
 				}
 			}
 			else
-				DPRINTF(E_ERROR, L_GENERAL, "Option -%c takes one argument.\n", argv[i][1]);
+				DPRINTF(E_ERROR, L_GENERAL, "Option -%c takes one argument.", argv[i][1]);
 			break; */
 /*		case 'i':
 			if(i+1 < argc)
@@ -810,7 +810,7 @@ init(	int argc, char * * argv,
 				i++;
 				if( getifaddr(argv[i], ip_addr, sizeof(ip_addr)) < 0 )
 				{
-					DPRINTF(E_FATAL, L_GENERAL, "Required network interface '%s' not found.\n",
+					DPRINTF(E_FATAL, L_GENERAL, "Required network interface '%s' not found.",
 						argv[i]);
 				}
 				for(j=0; j<n_lan_addr; j++)
@@ -829,12 +829,12 @@ init(	int argc, char * * argv,
 				}
 				else
 				{
-					DPRINTF(E_ERROR, L_GENERAL, "Too many listening ips (max: %d), ignoring %s\n",
+					DPRINTF(E_ERROR, L_GENERAL, "Too many listening ips (max: %d), ignoring %s",
 				    	    MAX_LAN_ADDR, argv[i]);
 				}
 			}
 			else
-				DPRINTF(E_ERROR, L_GENERAL, "Option -%c takes one argument.\n", argv[i][1]);
+				DPRINTF(E_ERROR, L_GENERAL, "Option -%c takes one argument.", argv[i][1]);
 			break; */
 		case 'f':
 			i++;	/* discarding, the config file is already read */
@@ -845,26 +845,26 @@ init(	int argc, char * * argv,
 /*		case 'R':
 			snprintf(buf, sizeof(buf), "rm -rf %s/files.db %s/art_cache", db_path, db_path);
 			if( system(buf) != 0 )
-				DPRINTF(E_WARN, L_GENERAL, "Failed to clean old file cache.\n");
+				DPRINTF(E_WARN, L_GENERAL, "Failed to clean old file cache.");
 			break; */
 		case 'U':
 			if(i+1 < argc)
 				*updatefile = argv[++i];
 			else
-				DPRINTF(E_ERROR, L_GENERAL, "Option -%c takes one argument.\n", argv[i][1]);
+				DPRINTF(E_ERROR, L_GENERAL, "option -%c takes one argument.", argv[i][1]);
 			break;
 		case 'S':
 			if(i+1 < argc)
 				*statusfile = argv[++i];
 			else
-				DPRINTF(E_ERROR, L_GENERAL, "Option -%c takes one argument.\n", argv[i][1]);
+				DPRINTF(E_ERROR, L_GENERAL, "option -%c takes one argument.", argv[i][1]);
 			break;
 		case 'V':
 			printf("Version " MINIDLNA_VERSION "\n");
 			exit(0);
 			break;
 		default:
-			DPRINTF(E_ERROR, L_GENERAL, "Unknown option: %s\n", argv[i]);
+			DPRINTF(E_ERROR, L_GENERAL, "unknown option: %s.", argv[i]);
 		}
 	}
 
@@ -879,7 +879,7 @@ init(	int argc, char * * argv,
 		    (getifaddr("eth0", ip_addr, sizeof(ip_addr)) < 0) &&
 		    (getifaddr("eth0", ip_addr, sizeof(ip_addr)) < 0) )
 		{
-			DPRINTF(E_OFF, L_GENERAL, "No IP address automatically detected!\n");
+			DPRINTF(E_OFF, L_GENERAL, "no IP address automatically detected.");
 		}
 		if( *ip_addr && parselanaddr(&lan_addr[n_lan_addr], ip_addr) == 0 )
 		{
@@ -892,13 +892,13 @@ init(	int argc, char * * argv,
 	/* the server can start without active interfaces */
 	if( (runtime_vars.port<=0) || *updatefile == NULL || *statusfile == NULL )
 	{
-		DPRINTF(E_ERROR, L_GENERAL, "%s %s %i %i\n",
+		fprintf(stderr, "%s %s %i %i\n",
 			*updatefile, *statusfile, n_lan_addr, runtime_vars.port);
 
-		DPRINTF(E_ERROR, L_GENERAL, "Usage:\n\t"
-		        "%s [-d] [-v] [-f config_file]\n"
+		fprintf(stderr, "Usage:\n\t"
+			"%s [-d] [-v] [-f config_file]\n"
 			"\t\t[-a listening_ip] [-p port]\n"
-			/*"[-l logfile] " not functionnal */
+/*			"[-l logfile] " not functionnal */
 			"\t\t[-s serial] [-m model_number] \n"
 			"\t\t[-t notify_interval] [-P pid_filename]\n"
 			"\t\t[-w url] [-R] [-V] [-h] [-U config_file]\n"
@@ -908,11 +908,13 @@ init(	int argc, char * * argv,
 			"\tWith -d minidlna will run in debug mode (not daemonize).\n"
 			"\t-w sets the presentation url. Default is http address on port 80\n"
 			"\t-h displays this text\n"
-	/*		"\t-R forces a full rescan\n" */
+/*			"\t-R forces a full rescan\n" */
 			"\t-L do note create playlists\n"
 			"\t-V print the version number\n",
-		        argv[0], pidfilename);
+			argv[0], pidfilename);
+
 		return 1;
+
 	}
 
 	if( verbose_flag )
@@ -944,7 +946,7 @@ init(	int argc, char * * argv,
 
 	if(checkforrunning(pidfilename) < 0)
 	{
-		DPRINTF(E_ERROR, L_GENERAL, "MiniDLNA is already running. EXITING.\n");
+		DPRINTF(E_ERROR, L_GENERAL, "miniDLNA is already running. EXITING.");
 		return 1;
 	}	
 
@@ -961,27 +963,27 @@ init(	int argc, char * * argv,
 	sa.sa_handler = sigterm;
 	if (sigaction(SIGTERM, &sa, NULL))
 	{
-		DPRINTF(E_FATAL, L_GENERAL, "Failed to set SIGTERM handler. EXITING.\n");
+		DPRINTF(E_FATAL, L_GENERAL, "failed to set SIGTERM handler. EXITING.");
 	}
 	if (sigaction(SIGINT, &sa, NULL))
 	{
-		DPRINTF(E_FATAL, L_GENERAL, "Failed to set SIGINT handler. EXITING.\n");
+		DPRINTF(E_FATAL, L_GENERAL, "failed to set SIGINT handler. EXITING.");
 	}
 
 	sa.sa_handler = sighup;
 	if (sigaction(SIGHUP, &sa, NULL))
 	{
-		DPRINTF(E_FATAL, L_GENERAL, "Failed to set SIGHUP handler. EXITING.\n");
+		DPRINTF(E_FATAL, L_GENERAL, "failed to set SIGHUP handler. EXITING.");
 	}
 
 	sa.sa_handler = sigchld;
 	if (sigaction(SIGCHLD, &sa, NULL))
 	{
-		DPRINTF(E_FATAL, L_GENERAL, "Failed to set SIGCHLD handler. EXITING.\n");
+		DPRINTF(E_FATAL, L_GENERAL, "failed to set SIGCHLD handler. EXITING.");
 	}
 
 	if(signal(SIGPIPE, SIG_IGN) == SIG_ERR) {
-		DPRINTF(E_FATAL, L_GENERAL, "Failed to ignore SIGPIPE signals. EXITING.\n");
+		DPRINTF(E_FATAL, L_GENERAL, "failed to ignore SIGPIPE signals. EXITING.");
 	}
 
 	writepidfile(pidfilename, pid);
@@ -1005,7 +1007,7 @@ update_db_path(const char *path)
 				strstr(pid, "container.storageFolder")
 			)
 		   ) {
-				DPRINTF(E_DEBUG, L_GENERAL, "folder %s not exist's, remove\n", path);
+				DPRINTF(E_DEBUG, L_GENERAL, "folder %s is not existing, remove.", path);
 				sqlite3_free(pid);
 				inotify_remove_directory(-1, path);
 				return 1;
@@ -1013,13 +1015,13 @@ update_db_path(const char *path)
 
 		if( pid ) sqlite3_free(pid);
 
-		DPRINTF(E_DEBUG, L_GENERAL, "file %s not exist's, remove\n", path);
+		DPRINTF(E_DEBUG, L_GENERAL, "file %s is not existing, remove.", path);
 		inotify_remove_file(path);
 	} else {
 		if( !S_ISDIR(st.st_mode) ) {
 			ts = sql_get_int_field(db, "SELECT TIMESTAMP from DETAILS where PATH = '%q'", path);
 			if( ts && ts < st.st_mtime ) {
-				DPRINTF(E_DEBUG, L_GENERAL, "path %s is newer than in db, remove\n", path);
+				DPRINTF(E_DEBUG, L_GENERAL, "path %s is newer than in db, remove.", path);
 				inotify_remove_file(path);
 			}
 		}
@@ -1051,7 +1053,7 @@ db_cleanup_list()
 	if( sql_get_table(db, "SELECT PATH from PLAYLISTS UNION all SELECT PATH from CAPTIONS", &result, &rows, NULL) == SQLITE_OK ) {
 		while( rows > 0 ) {
 			if( result[rows] ) {
-				DPRINTF(E_DEBUG, L_GENERAL, "force remove playlist's and caption's: %s\n", result[rows]);
+				DPRINTF(E_DEBUG, L_GENERAL, "force remove playlist's and caption's: %s.", result[rows]);
 				inotify_remove_file(result[rows]);
 			}
 			rows--;
@@ -1071,7 +1073,7 @@ recursive_remove(
 
 	if(name == NULL)
 	{
-		DPRINTF(E_FATAL, L_GENERAL, "Not enough memory.\n");
+		DPRINTF(E_FATAL, L_GENERAL, "not enough memory.");
 	}
 
 	struct stat s;
@@ -1080,8 +1082,8 @@ recursive_remove(
 
 	if(stat(name, &s) != 0)
 	{
-		DPRINTF(E_ERROR, L_GENERAL,
-			"Failed to get attributes for %s: %s.\n",
+		DPRINTF(E_DEBUG, L_GENERAL,
+			"failed to get attributes for %s: %s.",
 			name, strerror(errno));
 	}
 	else
@@ -1095,7 +1097,7 @@ recursive_remove(
 			if(dir == NULL)
 			{
 				DPRINTF(E_ERROR, L_GENERAL,
-					"Failed to open directory %s: %s.\n",
+					"failed to open directory %s: %s.",
 					name, strerror(errno));
 			}
 			else
@@ -1123,8 +1125,8 @@ recursive_remove(
 				else
 				{
 					DPRINTF(E_FATAL, L_GENERAL,
-						"Failed to allocate a directory entry " \
-						"for removing.\n");
+						"failed to allocate a directory entry " \
+						"for removing.");
 				}
 
 				closedir(dir);
@@ -1136,13 +1138,13 @@ recursive_remove(
 
 				if(ret == 0)
 				{
-					DPRINTF(E_WARN, L_GENERAL,
-						"%s directory removed.\n", name);
+					DPRINTF(E_DEBUG, L_GENERAL,
+						"%s directory removed.", name);
 				}
 				else
 				{
 					DPRINTF(E_WARN, L_GENERAL,
-						"failed to remove %s directory: %s.\n",
+						"failed to remove %s directory: %s.",
 						name, strerror(errno));
 				}
 			}
@@ -1153,11 +1155,11 @@ recursive_remove(
 
 			if(ret == 0)
 			{
-				DPRINTF(E_WARN, L_GENERAL, "%s removed.\n", name);
+				DPRINTF(E_DEBUG, L_GENERAL, "%s removed.", name);
 			}
 			else
 			{
-				DPRINTF(E_WARN, L_GENERAL, "failed to remove %s: %s.\n",
+				DPRINTF(E_WARN, L_GENERAL, "failed to remove %s: %s.",
 					name, strerror(errno));
 			}
 		}
@@ -1203,7 +1205,7 @@ remove_interface_and_socket(
 {
 	int i;
 
-	DPRINTF(E_WARN, L_GENERAL, "interface %s removed.\n",
+	DPRINTF(E_WARN, L_GENERAL, "interface %s removed.",
 		lan_addr[index].if_name);
 
 	close(sockets[index]);
@@ -1248,7 +1250,7 @@ restart_scanning(pid_t *scanner_pid, const char *const statusfile, int full)
 		if(name == NULL)
 		{
 			/* terminate */
-			DPRINTF(E_FATAL, L_GENERAL, "Not enough memory.\n");
+			DPRINTF(E_FATAL, L_GENERAL, "Not enough memory.");
 		}
 
 		snprintf(name, l, "%s/%s", db_path, DLNA_DB_FILE_NAME);
@@ -1272,7 +1274,7 @@ restart_scanning(pid_t *scanner_pid, const char *const statusfile, int full)
 		if( CreateDatabase() != 0 )
 		{
 			DPRINTF(E_FATAL, L_GENERAL,
-				"ERROR: Failed to create sqlite database! Exiting...\n");
+				"ERROR: Failed to create sqlite database! Exiting...");
 		}
 		sqlite3_close(db);
 	}
@@ -1290,7 +1292,7 @@ restart_scanning(pid_t *scanner_pid, const char *const statusfile, int full)
 			db_cleanup_list();
 		}
 
-		DPRINTF(E_DEBUG, L_GENERAL, "rescanning a database...\n");
+		DPRINTF(E_INFO, L_GENERAL, "rescanning database...");
 		start_scanner(statusfile);
 
 		sqlite3_close(db);
@@ -1327,7 +1329,7 @@ read_configuration_updates(
 	char *rescan_type = NULL;
 
 	DPRINTF(E_INFO, L_GENERAL,
-		"Starting configuration update (%s)...\n", updatefile);
+		"starting update...");
 
 	if(readoptionsfile(updatefile) < 0)
 	{
@@ -1335,7 +1337,7 @@ read_configuration_updates(
 		if(access(updatefile, F_OK) == 0)
 		{
 			DPRINTF(E_ERROR, L_GENERAL,
-				"Error reading configuration file %s\n", updatefile);
+				"Error reading configuration file %s", updatefile);
 		}
 	}
 	else
@@ -1415,15 +1417,15 @@ read_configuration_updates(
 							if(sockets[i] >= 0)
 							{
 								DPRINTF(E_WARN, L_GENERAL,
-									"Interface %s changed an IP address.\n",
+									"interface %s changed an IP address.",
 									lan_addr[i].if_name);
 								SendSSDPGoodbyeToSocket(sockets[i]);
 							}
 							else
 							{
 								DPRINTF(E_ERROR, L_GENERAL,
-									"Failed to reinitialize %s " \
-									"interface, ignored.\n",
+									"failed to reinitialize %s " \
+									"interface, ignored.",
 									lan_addr[i].if_name);
 
 								remove_interface(i, lan_addr, &n_lan_addr);
@@ -1451,7 +1453,7 @@ read_configuration_updates(
 
 			if(sockets[n_lan_addr] >= 0)
 			{
-				DPRINTF(E_WARN, L_GENERAL, "New interface added: %s\n",
+				DPRINTF(E_WARN, L_GENERAL, "new interface added: %s.",
 					lan_addr[n_lan_addr].if_name);
 				SendSSDPGoodbyeToSocket(sockets[n_lan_addr]);
 				n_lan_addr++;
@@ -1478,7 +1480,7 @@ read_configuration_updates(
 		{
 			const int restart_notifier = ((*inotify_thread) != 0);
 
-			DPRINTF(E_DEBUG, L_GENERAL, "stopping...\n");
+			DPRINTF(E_DEBUG, L_GENERAL, "stopping...");
 
 			/* stop a inotify thread and a scanner process */
 			stop_notifier = 1;
@@ -1487,7 +1489,7 @@ read_configuration_updates(
 			if(restart_notifier)
 			{
 				pthread_join(*inotify_thread, NULL);
-				DPRINTF(E_DEBUG, L_GENERAL, "Notifier thread stopped.\n");
+				DPRINTF(E_DEBUG, L_GENERAL, "notifier thread stopped.");
 			}
 
 			stop_notifier = 0;
@@ -1502,23 +1504,23 @@ read_configuration_updates(
 			if( restart_notifier &&
 				pthread_create(inotify_thread, NULL, start_inotify, NULL) )
 			{
-				DPRINTF(E_FATAL, L_GENERAL, "ERROR: pthread_create() failed for start_inotify.\n");
+				DPRINTF(E_FATAL, L_GENERAL, "ERROR: pthread_create() failed for start_inotify.");
 			}
 			dlna_signal_unblock(SIGCHLD);
 		}
 		else
 		{
 			DPRINTF(E_ERROR, L_GENERAL,
-				"Unknown rescan type: %s\n", rescan_type);
+				"unknown rescan type: %s.", rescan_type);
 		}
 	} else
 	{
-		DPRINTF(E_DEBUG, L_GENERAL, "No database rescan need.\n");
+		DPRINTF(E_INFO, L_GENERAL, "do not need database rescan.");
 	}
 
 	for(i = 0; i < n_lan_addr; i++)
 	{
-		DPRINTF(E_WARN, L_GENERAL, "active: %s\n", lan_addr[i].if_name);
+		DPRINTF(E_DEBUG, L_GENERAL, "active: %s", lan_addr[i].if_name);
 	}
 }
 
@@ -1556,7 +1558,7 @@ main(int argc, char * * argv)
 #ifdef ENABLE_NLS
 	setlocale(LC_MESSAGES, "");
 	setlocale(LC_CTYPE, "en_US.utf8");
-	DPRINTF(E_DEBUG, L_GENERAL, "Using locale dir %s\n", bindtextdomain("minidlna", getenv("TEXTDOMAINDIR")));
+	DPRINTF(E_DEBUG, L_GENERAL, "using locale dir %s.", bindtextdomain("minidlna", getenv("TEXTDOMAINDIR")));
 	textdomain("minidlna");
 #endif
 
@@ -1570,26 +1572,26 @@ main(int argc, char * * argv)
 	if (atexit(minidlna_kill_group) != 0 ||
 		atexit(minidlna_atexit) != 0)
 	{
-		DPRINTF(E_FATAL, L_GENERAL, "ERROR: atexit() failed.\n");
+		DPRINTF(E_FATAL, L_GENERAL, "ERROR: atexit() failed.");
 	}
 
 	if (init(argc, argv, &updatefile, &statusfile) != 0)
 		return 1;
 
 #ifdef READYNAS
-	DPRINTF(E_WARN, L_GENERAL, "Starting " SERVER_NAME " version " MINIDLNA_VERSION ".\n");
+	DPRINTF(E_WARN, L_GENERAL, "starting " SERVER_NAME " version " MINIDLNA_VERSION ".");
 	unlink("/ramfs/.upnp-av_scan");
 #else
-	DPRINTF(E_WARN, L_GENERAL, "Starting " SERVER_NAME " version " MINIDLNA_VERSION " [SQLite %s].\n", sqlite3_libversion());
+	DPRINTF(E_WARN, L_GENERAL, "starting " SERVER_NAME " version " MINIDLNA_VERSION " [SQLite %s].", sqlite3_libversion());
 	if( !sqlite3_threadsafe() )
 	{
 		DPRINTF(E_ERROR, L_GENERAL, "SQLite library is not threadsafe!  "
 		                            "Scanning must be finished before file serving can begin, "
-		                            "and inotify will be disabled.\n");
+		                            "and inotify will be disabled.");
 	}
 	if( sqlite3_libversion_number() < 3005001 )
 	{
-		DPRINTF(E_WARN, L_GENERAL, "SQLite library is old.  Please use version 3.5.1 or newer.\n");
+		DPRINTF(E_WARN, L_GENERAL, "SQLite library is old.  Please use version 3.5.1 or newer.");
 	}
 #endif
 	LIST_INIT(&upnphttphead);
@@ -1606,17 +1608,17 @@ main(int argc, char * * argv)
 	{
 		if( i < 0 )
 		{
-			DPRINTF(E_WARN, L_GENERAL, "Creating new database...\n");
+			DPRINTF(E_WARN, L_GENERAL, "creating new database...");
 		}
 		else
 		{
-			DPRINTF(E_WARN, L_GENERAL, "Database version mismatch; need to recreate...\n");
+			DPRINTF(E_WARN, L_GENERAL, "database version mismatch; need to recreate...");
 		}
 		sqlite3_close(db);
 		i = db_clean_cache(db_path);
 		if( i != 0 )
 		{
-			DPRINTF(E_WARN, L_GENERAL, "Failed to clean old file cache.\n");
+			DPRINTF(E_WARN, L_GENERAL, "failed to clean old file cache.");
 		}
 		/* scanning should be called with a closed database */
 		restart_scanning(&scanner_pid, statusfile, 1);
@@ -1628,16 +1630,16 @@ main(int argc, char * * argv)
 	if( sqlite3_threadsafe() && sqlite3_libversion_number() >= 3005001 &&
 	    GETFLAG(INOTIFY_MASK) && pthread_create(&inotify_thread, NULL, start_inotify, NULL) )
 	{
-		DPRINTF(E_FATAL, L_GENERAL, "ERROR: pthread_create() failed for start_inotify.\n");
+		DPRINTF(E_FATAL, L_GENERAL, "ERROR: pthread_create() failed for start_inotify.");
 	}
 	dlna_signal_unblock(SIGCHLD);
 
 	sudp = OpenAndConfSSDPReceiveSocket(n_lan_addr, lan_addr);
 	if(sudp < 0)
 	{
-		DPRINTF(E_INFO, L_GENERAL, "Failed to open socket for receiving SSDP. Trying to use MiniSSDPd\n");
+		DPRINTF(E_INFO, L_GENERAL, "failed to open socket for receiving SSDP. Trying to use MiniSSDPd.");
 		if(SubmitServicesToMiniSSDPD(lan_addr[0].str, runtime_vars.port) < 0) {
-			DPRINTF(E_FATAL, L_GENERAL, "Failed to connect to MiniSSDPd. EXITING");
+			DPRINTF(E_FATAL, L_GENERAL, "failed to connect to MiniSSDPd. EXITING.");
 			return 1;
 		}
 	}
@@ -1645,32 +1647,32 @@ main(int argc, char * * argv)
 	shttpl = OpenAndConfHTTPSocket(runtime_vars.port);
 	if(shttpl < 0)
 	{
-		DPRINTF(E_FATAL, L_GENERAL, "Failed to open socket for HTTP. EXITING\n");
+		DPRINTF(E_FATAL, L_GENERAL, "failed to open socket for HTTP. EXITING.");
 	}
-	DPRINTF(E_WARN, L_GENERAL, "HTTP listening on port %d\n", runtime_vars.port);
+	DPRINTF(E_WARN, L_GENERAL, "HTTP listening on port %d.", runtime_vars.port);
 
 	/* open socket for sending notifications */
 	if(OpenAndConfSSDPNotifySockets(snotify) < 0)
 	{
-		DPRINTF(E_FATAL, L_GENERAL, "Failed to open sockets for sending SSDP notify "
-	                "messages. EXITING\n");
+		DPRINTF(E_FATAL, L_GENERAL, "failed to open sockets for sending SSDP notify "
+	                "messages. EXITING.");
 	}
 
 #ifdef TIVO_SUPPORT
 	if( GETFLAG(TIVO_MASK) )
 	{
-		DPRINTF(E_WARN, L_GENERAL, "TiVo support is enabled.\n");
+		DPRINTF(E_WARN, L_GENERAL, "TiVo support is enabled.");
 		/* Add TiVo-specific randomize function to sqlite */
 		if( sqlite3_create_function(db, "tivorandom", 1, SQLITE_UTF8, NULL, &TiVoRandomSeedFunc, NULL, NULL) != SQLITE_OK )
 		{
-			DPRINTF(E_ERROR, L_TIVO, "ERROR: Failed to add sqlite randomize function for TiVo!\n");
+			DPRINTF(E_ERROR, L_TIVO, "ERROR: Failed to add sqlite randomize function for TiVo.");
 		}
 		/* open socket for sending Tivo notifications */
 		sbeacon = OpenAndConfTivoBeaconSocket();
 		if(sbeacon < 0)
 		{
-			DPRINTF(E_FATAL, L_GENERAL, "Failed to open sockets for sending Tivo beacon notify "
-		                "messages. EXITING\n");
+			DPRINTF(E_FATAL, L_GENERAL, "failed to open sockets for sending Tivo beacon notify "
+		                "messages. EXITING.");
 		}
 		tivo_bcast.sin_family = AF_INET;
 		tivo_bcast.sin_addr.s_addr = htonl(getBcastAddress());
@@ -1691,7 +1693,7 @@ main(int argc, char * * argv)
 		 * needed */
 		if(gettimeofday(&timeofday, 0) < 0)
 		{
-			DPRINTF(E_ERROR, L_GENERAL, "gettimeofday(): %s\n", strerror(errno));
+			DPRINTF(E_DEBUG, L_GENERAL, "gettimeofday(): %s", strerror(errno));
 			timeout.tv_sec = runtime_vars.notify_interval;
 			timeout.tv_usec = 0;
 		}
@@ -1793,7 +1795,7 @@ main(int argc, char * * argv)
 		/* for debug */
 		if(i > 1)
 		{
-			DPRINTF(E_DEBUG, L_GENERAL, "%d active incoming HTTP connections\n", i);
+			DPRINTF(E_DEBUG, L_GENERAL, "%d active incoming HTTP connections", i);
 		}
 #endif
 
@@ -1813,8 +1815,8 @@ main(int argc, char * * argv)
 			if(update_configuration || errno == EINTR || errno == EAGAIN)
 				goto update_config;
 
-			DPRINTF(E_ERROR, L_GENERAL, "select(all): %s\n", strerror(errno));
-			DPRINTF(E_FATAL, L_GENERAL, "Failed to select open sockets. EXITING\n");
+			DPRINTF(E_ERROR, L_GENERAL, "select(all): %s.", strerror(errno));
+			DPRINTF(E_FATAL, L_GENERAL, "failed to select open sockets. EXITING.");
 		}
 
 		upnpevents_processfds(&readset, &writeset);
@@ -1862,12 +1864,12 @@ main(int argc, char * * argv)
 			shttp = accept(shttpl, (struct sockaddr *)&clientname, &clientnamelen);
 			if(shttp<0)
 			{
-				DPRINTF(E_ERROR, L_GENERAL, "accept(http): %s\n", strerror(errno));
+				DPRINTF(E_ERROR, L_GENERAL, "accept(http): %s.", strerror(errno));
 			}
 			else
 			{
 				struct upnphttp * tmp = 0;
-				DPRINTF(E_DEBUG, L_GENERAL, "HTTP connection from %s:%d\n",
+				DPRINTF(E_DEBUG, L_GENERAL, "HTTP connection from %s:%d.",
 					inet_ntoa(clientname.sin_addr),
 					ntohs(clientname.sin_port) );
 				/*if (fcntl(shttp, F_SETFL, O_NONBLOCK) < 0) {
@@ -1883,7 +1885,7 @@ main(int argc, char * * argv)
 				}
 				else
 				{
-					DPRINTF(E_ERROR, L_GENERAL, "New_upnphttp() failed\n");
+					DPRINTF(E_ERROR, L_GENERAL, "New_upnphttp() failed.");
 					close(shttp);
 				}
 			}
@@ -1931,7 +1933,7 @@ shutdown:
 
 	if(SendSSDPGoodbye(snotify, n_lan_addr) < 0)
 	{
-		DPRINTF(E_ERROR, L_GENERAL, "Failed to broadcast good-bye notifications\n");
+		DPRINTF(E_ERROR, L_GENERAL, "failed to broadcast good-bye notifications.");
 	}
 	for(i=0; i<n_lan_addr; i++)
 		close(snotify[i]);
@@ -1948,7 +1950,7 @@ shutdown:
 
 	if(unlink(pidfilename) < 0)
 	{
-		DPRINTF(E_ERROR, L_GENERAL, "Failed to remove pidfile %s: %s\n", pidfilename, strerror(errno));
+		DPRINTF(E_ERROR, L_GENERAL, "failed to remove pidfile %s: %s.", pidfilename, strerror(errno));
 	}
 
 	freeoptions();

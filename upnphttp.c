@@ -113,7 +113,7 @@ CloseSocket_upnphttp(struct upnphttp * h)
 {
 	if(close(h->socket) < 0)
 	{
-		DPRINTF(E_ERROR, L_HTTP, "CloseSocket_upnphttp: close(%d): %s\n", h->socket, strerror(errno));
+		DPRINTF(E_ERROR, L_HTTP, "CloseSocket_upnphttp: close(%d): %s", h->socket, strerror(errno));
 	}
 	h->socket = -1;
 	h->state = 100;
@@ -158,7 +158,7 @@ SearchClientCache(struct in_addr addr, int quiet)
 				}
 			}
 			if( !quiet )
-				DPRINTF(E_DEBUG, L_HTTP, "Client found in cache. [type %d/entry %d]\n",
+				DPRINTF(E_INFO, L_HTTP, "Client found in cache. [type %d/entry %d]",
 					clients[i].type, i);
 			return i;
 		}
@@ -277,7 +277,7 @@ ParseHttpHeaders(struct upnphttp * h)
 					h->reqflags |= FLAG_RANGE;
 					h->req_RangeStart = strtoll(p+6, &colon, 10);
 					h->req_RangeEnd = colon ? atoll(colon+1) : 0;
-					DPRINTF(E_DEBUG, L_HTTP, "Range Start-End: %lld - %lld\n",
+					DPRINTF(E_DEBUG, L_HTTP, "Range Start-End: %lld - %lld",
 					       h->req_RangeStart, h->req_RangeEnd?h->req_RangeEnd:-1);
 				}
 			}
@@ -540,7 +540,7 @@ next_header:
 					continue;
 				get_remote_mac(h->clientaddr, clients[n].mac);
 				clients[n].addr = h->clientaddr;
-				DPRINTF(E_DEBUG, L_HTTP, "Added client [%d/%s/%02X:%02X:%02X:%02X:%02X:%02X] to cache slot %d.\n",
+				DPRINTF(E_INFO, L_HTTP, "Added client [%d/%s/%02X:%02X:%02X:%02X:%02X:%02X] to cache slot %d.",
 				                         h->req_client, inet_ntoa(clients[n].addr),
 				                         clients[n].mac[0], clients[n].mac[1], clients[n].mac[2],
 				                         clients[n].mac[3], clients[n].mac[4], clients[n].mac[5], n);
@@ -693,7 +693,7 @@ sendXMLdesc(struct upnphttp * h, char * (f)(int *))
 	desc = f(&len);
 	if(!desc)
 	{
-		DPRINTF(E_ERROR, L_HTTP, "Failed to generate XML description\n");
+		DPRINTF(E_ERROR, L_HTTP, "Failed to generate XML description");
 		Send500(h);
 		return;
 	}
@@ -742,7 +742,7 @@ ProcessHTTPPOST_upnphttp(struct upnphttp * h)
 		if(h->req_soapAction)
 		{
 			/* we can process the request */
-			DPRINTF(E_DEBUG, L_HTTP, "SOAPAction: %.*s\n", h->req_soapActionLen, h->req_soapAction);
+			DPRINTF(E_DEBUG, L_HTTP, "SOAPAction: %.*s", h->req_soapActionLen, h->req_soapAction);
 			ExecuteSoapAction(h, 
 				h->req_soapAction,
 				h->req_soapActionLen);
@@ -751,7 +751,7 @@ ProcessHTTPPOST_upnphttp(struct upnphttp * h)
 		{
 			static const char err400str[] =
 				"<html><body>Bad request</body></html>";
-			DPRINTF(E_WARN, L_HTTP, "No SOAPAction in HTTP headers\n");
+			DPRINTF(E_WARN, L_HTTP, "No SOAPAction in HTTP headers");
 			h->respflags = FLAG_HTML;
 			BuildResp2_upnphttp(h, 400, "Bad Request",
 			                    err400str, sizeof(err400str) - 1);
@@ -817,10 +817,10 @@ ProcessHTTPSubscribe_upnphttp(struct upnphttp * h, const char * path)
 {
 	const char * sid;
 	enum event_type type;
-	DPRINTF(E_DEBUG, L_HTTP, "ProcessHTTPSubscribe %s\n", path);
-	DPRINTF(E_DEBUG, L_HTTP, "Callback '%.*s' Timeout=%d\n",
+	DPRINTF(E_DEBUG, L_HTTP, "ProcessHTTPSubscribe %s", path);
+	DPRINTF(E_DEBUG, L_HTTP, "Callback '%.*s' Timeout=%d",
 	       h->req_CallbackLen, h->req_Callback, h->req_Timeout);
-	DPRINTF(E_DEBUG, L_HTTP, "SID '%.*s'\n", h->req_SIDLen, h->req_SID);
+	DPRINTF(E_DEBUG, L_HTTP, "SID '%.*s'", h->req_SIDLen, h->req_SID);
 
 	type = check_event(h);
 	if (type == E_SUBSCRIBE)
@@ -834,7 +834,7 @@ ProcessHTTPSubscribe_upnphttp(struct upnphttp * h, const char * path)
 		h->respflags = FLAG_TIMEOUT;
 		if (sid)
 		{
-			DPRINTF(E_DEBUG, L_HTTP, "generated sid=%s\n", sid);
+			DPRINTF(E_DEBUG, L_HTTP, "generated sid=%s", sid);
 			h->respflags |= FLAG_SID;
 			h->req_SID = sid;
 			h->req_SIDLen = strlen(sid);
@@ -869,8 +869,8 @@ static void
 ProcessHTTPUnSubscribe_upnphttp(struct upnphttp * h, const char * path)
 {
 	enum event_type type;
-	DPRINTF(E_DEBUG, L_HTTP, "ProcessHTTPUnSubscribe %s\n", path);
-	DPRINTF(E_DEBUG, L_HTTP, "SID '%.*s'\n", h->req_SIDLen, h->req_SID);
+	DPRINTF(E_DEBUG, L_HTTP, "ProcessHTTPUnSubscribe %s", path);
+	DPRINTF(E_DEBUG, L_HTTP, "SID '%.*s'", h->req_SIDLen, h->req_SID);
 	/* Remove from the list */
 	type = check_event(h);
 	if (type != E_INVALID)
@@ -962,7 +962,9 @@ ProcessHttpQuery_upnphttp(struct upnphttp * h)
 		h->state = 100;
 	}
 
-	DPRINTF(E_DEBUG, L_HTTP, "HTTP REQUEST: %.*s\n", h->req_buflen, h->req_buf);
+	DPRINTF(E_DEBUG, L_HTTP, "HTTP REQUEST: %.*s", h->req_buflen, h->req_buf);
+	DPRINTF(E_DEBUG, L_HTTP, "received HTTP REQUEST from client %d", h->req_client);
+
 	if(strcmp("POST", HttpCommand) == 0)
 	{
 		h->req_command = EPost;
@@ -972,7 +974,7 @@ ProcessHttpQuery_upnphttp(struct upnphttp * h)
 	{
 		if( ((strcmp(h->HttpVer, "HTTP/1.1")==0) && !(h->reqflags & FLAG_HOST)) || (h->reqflags & FLAG_INVALID_REQ) )
 		{
-			DPRINTF(E_WARN, L_HTTP, "Invalid request, responding ERROR 400.  (No Host specified in HTTP headers?)\n");
+			DPRINTF(E_WARN, L_HTTP, "Invalid request, responding ERROR 400.  (No Host specified in HTTP headers?)");
 			Send400(h);
 			return;
 		}
@@ -980,7 +982,7 @@ ProcessHttpQuery_upnphttp(struct upnphttp * h)
 		else if( (h->reqflags & (FLAG_TIMESEEK|FLAG_PLAYSPEED)) &&
 		         !(h->reqflags & FLAG_RANGE) )
 		{
-			DPRINTF(E_WARN, L_HTTP, "DLNA %s requested, responding ERROR 406\n",
+			DPRINTF(E_WARN, L_HTTP, "DLNA %s requested, responding ERROR 406",
 			                        h->reqflags&FLAG_TIMESEEK ? "TimeSeek" : "PlaySpeed");
 			Send406(h);
 			return;
@@ -1056,13 +1058,13 @@ ProcessHttpQuery_upnphttp(struct upnphttp * h)
 				}
 				else
 				{
-					DPRINTF(E_WARN, L_HTTP, "Invalid TiVo request! %s\n", HttpUrl+12);
+					DPRINTF(E_WARN, L_HTTP, "Invalid TiVo request! %s", HttpUrl+12);
 					Send404(h);
 				}
 			}
 			else
 			{
-				DPRINTF(E_WARN, L_HTTP, "TiVo request with out TiVo support enabled! %s\n",
+				DPRINTF(E_WARN, L_HTTP, "TiVo request with out TiVo support enabled! %s",
 					HttpUrl+12);
 				Send404(h);
 			}
@@ -1086,7 +1088,7 @@ ProcessHttpQuery_upnphttp(struct upnphttp * h)
 		}
 		else
 		{
-			DPRINTF(E_WARN, L_HTTP, "%s not found, responding ERROR 404\n", HttpUrl);
+			DPRINTF(E_WARN, L_HTTP, "%s not found, responding ERROR 404", HttpUrl);
 			Send404(h);
 		}
 	}
@@ -1102,7 +1104,7 @@ ProcessHttpQuery_upnphttp(struct upnphttp * h)
 	}
 	else
 	{
-		DPRINTF(E_WARN, L_HTTP, "Unsupported HTTP Command %s\n", HttpCommand);
+		DPRINTF(E_WARN, L_HTTP, "Unsupported HTTP Command %s", HttpCommand);
 		Send501(h);
 	}
 }
@@ -1121,12 +1123,12 @@ Process_upnphttp(struct upnphttp * h)
 		n = recv(h->socket, buf, 2048, 0);
 		if(n<0)
 		{
-			DPRINTF(E_ERROR, L_HTTP, "recv (state0): %s\n", strerror(errno));
+			DPRINTF(E_ERROR, L_HTTP, "recv (state0): %s", strerror(errno));
 			h->state = 100;
 		}
 		else if(n==0)
 		{
-			DPRINTF(E_WARN, L_HTTP, "HTTP Connection closed unexpectedly\n");
+			DPRINTF(E_WARN, L_HTTP, "HTTP Connection closed unexpectedly");
 			h->state = 100;
 		}
 		else
@@ -1153,12 +1155,12 @@ Process_upnphttp(struct upnphttp * h)
 		n = recv(h->socket, buf, 2048, 0);
 		if(n<0)
 		{
-			DPRINTF(E_ERROR, L_HTTP, "recv (state%d): %s\n", h->state, strerror(errno));
+			DPRINTF(E_ERROR, L_HTTP, "recv (state%d): %s", h->state, strerror(errno));
 			h->state = 100;
 		}
 		else if(n==0)
 		{
-			DPRINTF(E_WARN, L_HTTP, "HTTP Connection closed unexpectedly\n");
+			DPRINTF(E_WARN, L_HTTP, "HTTP Connection closed unexpectedly");
 			h->state = 100;
 		}
 		else
@@ -1183,7 +1185,7 @@ Process_upnphttp(struct upnphttp * h)
 		}
 		break;
 	default:
-		DPRINTF(E_WARN, L_HTTP, "Unexpected state: %d\n", h->state);
+		DPRINTF(E_WARN, L_HTTP, "Unexpected state: %d", h->state);
 	}
 }
 
@@ -1286,16 +1288,16 @@ void
 SendResp_upnphttp(struct upnphttp * h)
 {
 	int n;
-	DPRINTF(E_DEBUG, L_HTTP, "HTTP RESPONSE: %.*s\n", h->res_buflen, h->res_buf);
+	DPRINTF(E_DEBUG, L_HTTP, "HTTP RESPONSE: %.*s", h->res_buflen, h->res_buf);
 	n = send(h->socket, h->res_buf, h->res_buflen, 0);
 	if(n<0)
 	{
-		DPRINTF(E_ERROR, L_HTTP, "send(res_buf): %s\n", strerror(errno));
+		DPRINTF(E_ERROR, L_HTTP, "send(res_buf): %s", strerror(errno));
 	}
 	else if(n < h->res_buflen)
 	{
 		/* TODO : handle correctly this case */
-		DPRINTF(E_ERROR, L_HTTP, "send(res_buf): %d bytes sent (out of %d)\n",
+		DPRINTF(E_ERROR, L_HTTP, "send(res_buf): %d bytes sent (out of %d)",
 						n, h->res_buflen);
 	}
 }
@@ -1308,12 +1310,12 @@ send_data(struct upnphttp * h, char * header, size_t size, int flags)
 	n = send(h->socket, header, size, flags);
 	if(n<0)
 	{
-		DPRINTF(E_ERROR, L_HTTP, "send(res_buf): %s\n", strerror(errno));
+		DPRINTF(E_ERROR, L_HTTP, "send(res_buf): %s", strerror(errno));
 	} 
 	else if(n < h->res_buflen)
 	{
 		/* TODO : handle correctly this case */
-		DPRINTF(E_ERROR, L_HTTP, "send(res_buf): %d bytes sent (out of %d)\n",
+		DPRINTF(E_ERROR, L_HTTP, "send(res_buf): %d bytes sent (out of %d)",
 						n, h->res_buflen);
 	}
 	else
@@ -1339,7 +1341,7 @@ send_file(struct upnphttp * h, int sendfd, off_t offset, off_t end_offset)
 			ret = sendfile(h->socket, sendfd, &offset, send_size);
 			if( ret == -1 )
 			{
-				DPRINTF(E_DEBUG, L_HTTP, "sendfile error :: error no. %d [%s]\n", errno, strerror(errno));
+				DPRINTF(E_DEBUG, L_HTTP, "sendfile error :: error no. %d [%s]", errno, strerror(errno));
 				/* If sendfile isn't supported on the filesystem, don't bother trying to use it again. */
 				if( errno == EOVERFLOW || errno == EINVAL )
 					try_sendfile = 0;
@@ -1359,13 +1361,13 @@ send_file(struct upnphttp * h, int sendfd, off_t offset, off_t end_offset)
 		lseek(sendfd, offset, SEEK_SET);
 		ret = read(sendfd, buf, send_size);
 		if( ret == -1 ) {
-			DPRINTF(E_DEBUG, L_HTTP, "read error :: error no. %d [%s]\n", errno, strerror(errno));
+			DPRINTF(E_DEBUG, L_HTTP, "read error :: error no. %d [%s]", errno, strerror(errno));
 			if( errno != EAGAIN )
 				break;
 		}
 		ret = write(h->socket, buf, ret);
 		if( ret == -1 ) {
-			DPRINTF(E_DEBUG, L_HTTP, "write error :: error no. %d [%s]\n", errno, strerror(errno));
+			DPRINTF(E_DEBUG, L_HTTP, "write error :: error no. %d [%s]", errno, strerror(errno));
 			if( errno != EAGAIN )
 				break;
 		}
@@ -1386,35 +1388,35 @@ SendResp_icon(struct upnphttp * h, char * icon)
 
 	if( strcmp(icon, "sm.png") == 0 )
 	{
-		DPRINTF(E_DEBUG, L_HTTP, "Sending small PNG icon\n");
+		DPRINTF(E_DEBUG, L_HTTP, "Sending small PNG icon");
 		data = (char *)png_sm;
 		size = sizeof(png_sm)-1;
 		strcpy(mime+6, "png");
 	}
 	else if( strcmp(icon, "lrg.png") == 0 )
 	{
-		DPRINTF(E_DEBUG, L_HTTP, "Sending large PNG icon\n");
+		DPRINTF(E_DEBUG, L_HTTP, "Sending large PNG icon");
 		data = (char *)png_lrg;
 		size = sizeof(png_lrg)-1;
 		strcpy(mime+6, "png");
 	}
 	else if( strcmp(icon, "sm.jpg") == 0 )
 	{
-		DPRINTF(E_DEBUG, L_HTTP, "Sending small JPEG icon\n");
+		DPRINTF(E_DEBUG, L_HTTP, "Sending small JPEG icon");
 		data = (char *)jpeg_sm;
 		size = sizeof(jpeg_sm)-1;
 		strcpy(mime+6, "jpeg");
 	}
 	else if( strcmp(icon, "lrg.jpg") == 0 )
 	{
-		DPRINTF(E_DEBUG, L_HTTP, "Sending large JPEG icon\n");
+		DPRINTF(E_DEBUG, L_HTTP, "Sending large JPEG icon");
 		data = (char *)jpeg_lrg;
 		size = sizeof(jpeg_lrg)-1;
 		strcpy(mime+6, "jpeg");
 	}
 	else
 	{
-		DPRINTF(E_WARN, L_HTTP, "Invalid icon request: %s\n", icon);
+		DPRINTF(E_WARN, L_HTTP, "Invalid icon request: %s", icon);
 		Send404(h);
 		return;
 	}
@@ -1450,7 +1452,7 @@ SendResp_albumArt(struct upnphttp * h, char * object)
 
 	if( h->reqflags & (FLAG_XFERSTREAMING|FLAG_RANGE) )
 	{
-		DPRINTF(E_WARN, L_HTTP, "Client tried to specify transferMode as Streaming with an image!\n");
+		DPRINTF(E_WARN, L_HTTP, "Client tried to specify transferMode as Streaming with an image!");
 		Send406(h);
 		return;
 	}
@@ -1462,15 +1464,15 @@ SendResp_albumArt(struct upnphttp * h, char * object)
 	path = sql_get_text_field(db, "SELECT PATH from ALBUM_ART where ID = '%s'", object);
 	if( !path )
 	{
-		DPRINTF(E_WARN, L_HTTP, "ALBUM_ART ID %s not found, responding ERROR 404\n", object);
+		DPRINTF(E_WARN, L_HTTP, "ALBUM_ART ID %s not found, responding ERROR 404", object);
 		Send404(h);
 		return;
 	}
-	DPRINTF(E_INFO, L_HTTP, "Serving album art ID: %s [%s]\n", object, path);
+	DPRINTF(E_DEBUG, L_HTTP, "Serving album art ID: %s [%s]", object, path);
 
 	fd = open(path, O_RDONLY);
 	if( fd < 0 ) {
-		DPRINTF(E_ERROR, L_HTTP, "Error opening %s\n", path);
+		DPRINTF(E_ERROR, L_HTTP, "Error opening %s", path);
 		sqlite3_free(path);
 		Send404(h);
 		return;
@@ -1515,11 +1517,11 @@ SendResp_caption(struct upnphttp * h, char * object)
 	path = sql_get_text_field(db, "SELECT PATH from CAPTIONS where ID = %s", object);
 	if( !path )
 	{
-		DPRINTF(E_WARN, L_HTTP, "CAPTION ID %s not found, responding ERROR 404\n", object);
+		DPRINTF(E_WARN, L_HTTP, "CAPTION ID %s not found, responding ERROR 404", object);
 		Send404(h);
 		return;
 	}
-	DPRINTF(E_INFO, L_HTTP, "Serving caption ID: %s [%s]\n", object, path);
+	DPRINTF(E_DEBUG, L_HTTP, "Serving caption ID: %s [%s]", object, path);
 
 	fd = open(path, O_RDONLY);
 	if( fd < 0 ) {
@@ -1564,7 +1566,7 @@ SendResp_thumbnail(struct upnphttp * h, char * object)
 
 	if( h->reqflags & (FLAG_XFERSTREAMING|FLAG_RANGE) )
 	{
-		DPRINTF(E_WARN, L_HTTP, "Client tried to specify transferMode as Streaming with an image!\n");
+		DPRINTF(E_WARN, L_HTTP, "Client tried to specify transferMode as Streaming with an image!");
 		Send406(h);
 		return;
 	}
@@ -1573,15 +1575,15 @@ SendResp_thumbnail(struct upnphttp * h, char * object)
 	path = sql_get_text_field(db, "SELECT PATH from DETAILS where ID = '%s'", object);
 	if( !path )
 	{
-		DPRINTF(E_WARN, L_HTTP, "DETAIL ID %s not found, responding ERROR 404\n", object);
+		DPRINTF(E_WARN, L_HTTP, "DETAIL ID %s not found, responding ERROR 404", object);
 		Send404(h);
 		return;
 	}
-	DPRINTF(E_INFO, L_HTTP, "Serving thumbnail for ObjectId: %s [%s]\n", object, path);
+	DPRINTF(E_DEBUG, L_HTTP, "Serving thumbnail for ObjectId: %s [%s]", object, path);
 
 	if( access(path, F_OK) != 0 )
 	{
-		DPRINTF(E_ERROR, L_HTTP, "Error accessing %s\n", path);
+		DPRINTF(E_ERROR, L_HTTP, "Error accessing %s", path);
 		sqlite3_free(path);
 		return;
 	}
@@ -1663,7 +1665,7 @@ SendResp_resizedimg(struct upnphttp * h, char * object)
 	}
 	if( !file_path || !resolution || (access(file_path, F_OK) != 0) )
 	{
-		DPRINTF(E_WARN, L_HTTP, "%s not found, responding ERROR 404\n", object);
+		DPRINTF(E_WARN, L_HTTP, "%s not found, responding ERROR 404", object);
 		sqlite3_free_table(result);
 		Send404(h);
 		return;
@@ -1681,7 +1683,7 @@ SendResp_resizedimg(struct upnphttp * h, char * object)
 		key = strsep(&val, "=");
 		if( !val )
 			continue;
-		DPRINTF(E_DEBUG, L_GENERAL, "%s: %s\n", key, val);
+		DPRINTF(E_DEBUG, L_GENERAL, "%s: %s", key, val);
 		if( strcasecmp(key, "width") == 0 )
 		{
 			width = atoi(val);
@@ -1716,7 +1718,7 @@ SendResp_resizedimg(struct upnphttp * h, char * object)
 	if(i == MAX_CONNECTION_COUNT)
 	{
 		/* no free connection slots available now */
-		DPRINTF(E_ERROR, L_HTTP, "No free connection slots available, responding ERROR 503.\n");
+		DPRINTF(E_ERROR, L_HTTP, "No free connection slots available, responding ERROR 503.");
 		sqlite3_free_table(result);
 		Send503(h);
 		return;
@@ -1737,12 +1739,12 @@ SendResp_resizedimg(struct upnphttp * h, char * object)
 
 	if( h->reqflags & (FLAG_XFERSTREAMING|FLAG_RANGE) )
 	{
-		DPRINTF(E_WARN, L_HTTP, "Client tried to specify transferMode as Streaming with an image!\n");
+		DPRINTF(E_WARN, L_HTTP, "Client tried to specify transferMode as Streaming with an image!");
 		Send406(h);
 		goto resized_error;
 	}
 
-	DPRINTF(E_INFO, L_HTTP, "Serving resized image for ObjectId: %lld [%s]\n", id, file_path);
+	DPRINTF(E_INFO, L_HTTP, "Serving resized image for ObjectId: %lld [%s]", id, file_path);
 	switch( rotate )
 	{
 		case 90:
@@ -1826,7 +1828,7 @@ SendResp_resizedimg(struct upnphttp * h, char * object)
 	{
 		if( !imsrc )
 		{
-			DPRINTF(E_WARN, L_HTTP, "Unable to open image %s!\n", file_path);
+			DPRINTF(E_WARN, L_HTTP, "Unable to open image %s!", file_path);
 			Send500(h);
 			goto resized_error;
 		}
@@ -1844,7 +1846,7 @@ SendResp_resizedimg(struct upnphttp * h, char * object)
 			imsrc = image_new_from_jpeg(file_path, 1, NULL, 0, scale, rotate);
 			if( !imsrc )
 			{
-				DPRINTF(E_WARN, L_HTTP, "Unable to open image %s!\n", file_path);
+				DPRINTF(E_WARN, L_HTTP, "Unable to open image %s!", file_path);
 				Send500(h);
 				goto resized_error;
 			}
@@ -1861,7 +1863,7 @@ SendResp_resizedimg(struct upnphttp * h, char * object)
 			send_data(h, (char *)data, size, 0);
 		}
 	}
-	DPRINTF(E_INFO, L_HTTP, "Done serving %s\n", file_path);
+	DPRINTF(E_DEBUG, L_HTTP, "Done serving %s.", file_path);
 	if( imsrc )
 		image_free(imsrc);
 	if( imdst )
@@ -1919,7 +1921,7 @@ SendResp_dlnafile(struct upnphttp * h, char * object)
 		}
 		if( !rows || !result[3] || !result[4] )
 		{
-			DPRINTF(E_WARN, L_HTTP, "%s not found, responding ERROR 404\n", object);
+			DPRINTF(E_WARN, L_HTTP, "%s not found, responding ERROR 404", object);
 			sqlite3_free_table(result);
 			Send404(h);
 			return;
@@ -1965,13 +1967,13 @@ SendResp_dlnafile(struct upnphttp * h, char * object)
 		goto error;
 	}
 
-	DPRINTF(E_INFO, L_HTTP, "Serving DetailID: %lld [%s]\n", id, last_file.path);
+	DPRINTF(E_DEBUG, L_HTTP, "Serving DetailID: %lld [%s]", id, last_file.path);
 
 	if( h->reqflags & FLAG_XFERSTREAMING )
 	{
 		if( strncmp(last_file.mime, "image", 5) == 0 )
 		{
-			DPRINTF(E_WARN, L_HTTP, "Client tried to specify transferMode as Streaming with an image!\n");
+			DPRINTF(E_WARN, L_HTTP, "Client tried to specify transferMode as Streaming with an image!");
 			Send406(h);
 			goto error;
 		}
@@ -1980,13 +1982,13 @@ SendResp_dlnafile(struct upnphttp * h, char * object)
 	{
 		if( h->reqflags & FLAG_REALTIMEINFO )
 		{
-			DPRINTF(E_WARN, L_HTTP, "Bad realTimeInfo flag with Interactive request!\n");
+			DPRINTF(E_WARN, L_HTTP, "Bad realTimeInfo flag with Interactive request!");
 			Send400(h);
 			goto error;
 		}
 		if( strncmp(last_file.mime, "image", 5) != 0 )
 		{
-			DPRINTF(E_WARN, L_HTTP, "Client tried to specify transferMode as Interactive without an image!\n");
+			DPRINTF(E_WARN, L_HTTP, "Client tried to specify transferMode as Interactive without an image!");
 			/* Samsung TVs (well, at least the A950) do this for some reason,
 			 * and I don't see them fixing this bug any time soon. */
 			if( !(h->reqflags & FLAG_SAMSUNG) || GETFLAG(DLNA_STRICT_MASK) )
@@ -2000,7 +2002,7 @@ SendResp_dlnafile(struct upnphttp * h, char * object)
 	offset = h->req_RangeStart;
 	sendfh = open(last_file.path, O_RDONLY);
 	if( sendfh < 0 ) {
-		DPRINTF(E_ERROR, L_HTTP, "Error opening %s\n", last_file.path);
+		DPRINTF(E_ERROR, L_HTTP, "Error opening %s", last_file.path);
 		Send404(h);
 		goto error;
 	}
@@ -2023,14 +2025,14 @@ SendResp_dlnafile(struct upnphttp * h, char * object)
 		}
 		if( (h->req_RangeStart > h->req_RangeEnd) || (h->req_RangeStart < 0) )
 		{
-			DPRINTF(E_WARN, L_HTTP, "Specified range was invalid!\n");
+			DPRINTF(E_WARN, L_HTTP, "Specified range was invalid!");
 			Send400(h);
 			close(sendfh);
 			goto error;
 		}
 		if( h->req_RangeEnd >= size )
 		{
-			DPRINTF(E_WARN, L_HTTP, "Specified range was outside file boundaries!\n");
+			DPRINTF(E_WARN, L_HTTP, "Specified range was outside file boundaries!");
 			Send416(h);
 			close(sendfh);
 			goto error;

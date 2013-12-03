@@ -91,11 +91,11 @@ add_watch(int fd, const char * path)
 		if( errno == ENOENT )
 		{
 			inotify_remove_directory(-1, path);
-			DPRINTF(E_DEBUG, L_INOTIFY, "removed directory(%s).\n", path);
+			DPRINTF(E_DEBUG, L_INOTIFY, "removed directory(%s).", path);
 		}
 		else
 		{
-			DPRINTF(E_ERROR, L_INOTIFY, "inotify_add_watch(%s) [%s]\n", path, strerror(errno));
+			DPRINTF(E_ERROR, L_INOTIFY, "inotify_add_watch(%s) [%s]", path, strerror(errno));
 		}
 
 		return -1;
@@ -104,7 +104,7 @@ add_watch(int fd, const char * path)
 	nw = malloc(sizeof(struct watch));
 	if( nw == NULL )
 	{
-		DPRINTF(E_ERROR, L_INOTIFY, "malloc() error\n");
+		DPRINTF(E_ERROR, L_INOTIFY, "malloc() error");
 		return -1;
 	}
 	nw->wd = wd;
@@ -161,14 +161,14 @@ inotify_create_watches(int fd)
 
 	for( media_path = media_dirs; media_path != NULL; media_path = media_path->next )
 	{
-		DPRINTF(E_DEBUG, L_INOTIFY, "Add watch to %s\n", media_path->path);
+		DPRINTF(E_DEBUG, L_INOTIFY, "Add watch to %s", media_path->path);
 		add_watch(fd, media_path->path);
 		num_watches++;
 	}
 	sql_get_table(db, "SELECT PATH from DETAILS where MIME is NULL and PATH is not NULL", &result, &rows, NULL);
 	for( i=1; i <= rows; i++ )
 	{
-		DPRINTF(E_DEBUG, L_INOTIFY, "Add watch to %s\n", result[i]);
+		DPRINTF(E_DEBUG, L_INOTIFY, "Add watch to %s", result[i]);
 		add_watch(fd, result[i]);
 		num_watches++;
 	}
@@ -203,14 +203,14 @@ inotify_create_watches(int fd)
 			{
 				DPRINTF(E_WARN, L_INOTIFY, "WARNING: Inotify max_user_watches [%u] is low or close to the number of used watches [%u] "
 				                        "and I do not have permission to increase this limit.  Please do so manually by "
-				                        "writing a higher value into /proc/sys/fs/inotify/max_user_watches.\n", watch_limit, num_watches);
+				                        "writing a higher value into /proc/sys/fs/inotify/max_user_watches.", watch_limit, num_watches);
 			}
 		}
 	}
 	else
 	{
 		DPRINTF(E_WARN, L_INOTIFY, "WARNING: Could not read inotify max_user_watches!  "
-		                        "Hopefully it is enough to cover %u current directories plus any new ones added.\n", num_watches);
+		                        "Hopefully it is enough to cover %u current directories plus any new ones added.", num_watches);
 	}
 
 	return rows;
@@ -257,11 +257,11 @@ int add_dir_watch(int fd, char * path, char * filename)
 	wd = add_watch(fd, dir);
 	if( wd == -1 )
 	{
-		DPRINTF(E_ERROR, L_INOTIFY, "add_watch() [%s]\n", strerror(errno));
+		DPRINTF(E_ERROR, L_INOTIFY, "add_watch() [%s]", strerror(errno));
 	}
 	else
 	{
-		DPRINTF(E_INFO, L_INOTIFY, "Added watch to %s [%d]\n", dir, wd);
+		DPRINTF(E_INFO, L_INOTIFY, "Added watch to %s [%d]", dir, wd);
 	}
 
 	ds = opendir(dir);
@@ -289,7 +289,7 @@ int add_dir_watch(int fd, char * path, char * filename)
 	}
 	else
 	{
-		DPRINTF(E_ERROR, L_INOTIFY, "Opendir error! [%s]\n", strerror(errno));
+		DPRINTF(E_ERROR, L_INOTIFY, "Opendir error! [%s]", strerror(errno));
 	}
 	closedir(ds);
 	i++;
@@ -363,14 +363,14 @@ inotify_insert_file(int update, char * name, const char * path)
 	ts = sql_get_int_field(db, "SELECT TIMESTAMP from DETAILS where PATH = '%q'", path);
 	if( !ts && is_playlist(path) && (sql_get_int_field(db, "SELECT ID from PLAYLISTS where PATH = '%q'", path) > 0) )
 	{
-		DPRINTF(E_DEBUG, L_INOTIFY, "Re-reading modified playlist.\n", path);
+		DPRINTF(E_DEBUG, L_INOTIFY, "Re-reading modified playlist.", path);
 		inotify_remove_file(path);
 		next_pl_fill = 1;
 	}
 	else if( ts < st.st_mtime )
 	{
 		if( ts > 0 )
-			DPRINTF(E_DEBUG, L_INOTIFY, "%s is newer than the last db entry.\n", path);
+			DPRINTF(E_DEBUG, L_INOTIFY, "%s is newer than the last db entry.", path);
 		inotify_remove_file(path);
 	}
 	else if( update )
@@ -400,7 +400,7 @@ inotify_insert_file(int update, char * name, const char * path)
 			{
 				if( !depth )
 					break;
-				DPRINTF(E_DEBUG, L_INOTIFY, "Found first known parentID: %s [%s]\n", id, parent_buf);
+				DPRINTF(E_DEBUG, L_INOTIFY, "Found first known parentID: %s [%s]", id, parent_buf);
 				/* Insert newly-found directory */
 				strcpy(base_name, last_dir);
 				base_copy = basename(base_name);
@@ -428,7 +428,7 @@ inotify_insert_file(int update, char * name, const char * path)
 
 	if( !depth )
 	{
-		//DEBUG DPRINTF(E_DEBUG, L_INOTIFY, "Inserting %s\n", name);
+		DPRINTF(E_INFO, L_INOTIFY, "Inserting %s", name);
 		insert_file(name, path, id+2, get_next_available_id("OBJECTS", id));
 		sqlite3_free(id);
 		if( (is_audio(path) || is_playlist(path)) && next_pl_fill != 1 )
@@ -461,7 +461,7 @@ inotify_insert_directory(int fd, char *name, const char * path)
 
 	if( access(path, R_OK|X_OK) != 0 )
 	{
-		DPRINTF(E_WARN, L_INOTIFY, "Could not access %s [%s]\n", path, strerror(errno));
+		DPRINTF(E_DEBUG, L_INOTIFY, "Could not access %s [%s]", path, strerror(errno));
 		return -1;
 	}
 	dir_add = 1;
@@ -469,7 +469,7 @@ inotify_insert_directory(int fd, char *name, const char * path)
 	{
 		if( fd != -1 )
 		{
-			DPRINTF(E_DEBUG, L_INOTIFY, "%s already exists\n", path);
+			DPRINTF(E_DEBUG, L_INOTIFY, "%s already exists", path);
 			return 0;
 		}
 
@@ -493,11 +493,11 @@ inotify_insert_directory(int fd, char *name, const char * path)
 		wd = add_watch(fd, path);
 		if( wd == -1 )
 		{
-			DPRINTF(E_ERROR, L_INOTIFY, "add_watch() failed\n");
+			DPRINTF(E_ERROR, L_INOTIFY, "add_watch() failed");
 		}
 		else
 		{
-			DPRINTF(E_INFO, L_INOTIFY, "Added watch to %s [%d]\n", path, wd);
+			DPRINTF(E_INFO, L_INOTIFY, "Added watch to %s [%d]", path, wd);
 		}
 	}
 
@@ -515,7 +515,7 @@ inotify_insert_directory(int fd, char *name, const char * path)
 	ds = opendir(path);
 	if( !ds )
 	{
-		DPRINTF(E_ERROR, L_INOTIFY, "opendir failed! [%s]\n", strerror(errno));
+		DPRINTF(E_ERROR, L_INOTIFY, "opendir failed! [%s]", strerror(errno));
 		return -1;
 	}
 
@@ -524,7 +524,7 @@ inotify_insert_directory(int fd, char *name, const char * path)
 	if( !d )
 	{
 		closedir(ds);
-		DPRINTF(E_ERROR, L_INOTIFY, "dirent allocation failed!\n");
+		DPRINTF(E_ERROR, L_INOTIFY, "dirent allocation failed!");
 		return -1;
 	}
 
@@ -712,7 +712,7 @@ start_inotify(void *args)
 	pollfds[0].events = POLLIN;
 
 	if ( pollfds[0].fd < 0 )
-		DPRINTF(E_ERROR, L_INOTIFY, "inotify_init() failed!\n");
+		DPRINTF(E_ERROR, L_INOTIFY, "inotify_init() failed!");
 
 	while( scanning )
 	{
@@ -722,7 +722,7 @@ start_inotify(void *args)
 	}
 	inotify_create_watches(pollfds[0].fd);
 	if (setpriority(PRIO_PROCESS, 0, 19) == -1)
-		DPRINTF(E_WARN, L_INOTIFY,  "Failed to reduce inotify thread priority\n");
+		DPRINTF(E_WARN, L_INOTIFY,  "Failed to reduce inotify thread priority");
 	sqlite3_release_memory(1<<31);
         
 	while( !quitting && !stop_notifier )
@@ -742,7 +742,7 @@ start_inotify(void *args)
                         if( (errno == EINTR) || (errno == EAGAIN) )
                                 continue;
                         else
-				DPRINTF(E_ERROR, L_INOTIFY, "read failed!\n");
+				DPRINTF(E_ERROR, L_INOTIFY, "read failed!");
 		}
 		else
 		{
@@ -764,7 +764,7 @@ start_inotify(void *args)
 				sprintf(path_buf, "%s/%s", get_path_from_wd(event->wd), event->name);
 				if ( event->mask & IN_ISDIR && (event->mask & (IN_CREATE|IN_MOVED_TO)) )
 				{
-					DPRINTF(E_DEBUG, L_INOTIFY,  "The directory %s was %s.\n",
+					DPRINTF(E_DEBUG, L_INOTIFY,  "The directory %s was %s.",
 						path_buf, (event->mask & IN_MOVED_TO ? "moved here" : "created"));
 					inotify_insert_directory(pollfds[0].fd, esc_name, path_buf);
 				}
@@ -773,7 +773,7 @@ start_inotify(void *args)
 				{
 					if( S_ISLNK(st.st_mode) )
 					{
-						DPRINTF(E_DEBUG, L_INOTIFY, "The symbolic link %s was %s.\n",
+						DPRINTF(E_DEBUG, L_INOTIFY, "The symbolic link %s was %s.",
 							path_buf, (event->mask & IN_MOVED_TO ? "moved here" : "created"));
 						if( stat(path_buf, &st) == 0 && S_ISDIR(st.st_mode) )
 							inotify_insert_directory(pollfds[0].fd, esc_name, path_buf);
@@ -785,7 +785,7 @@ start_inotify(void *args)
 						if( (event->mask & IN_MOVED_TO) ||
 						    (sql_get_int_field(db, "SELECT TIMESTAMP from DETAILS where PATH = '%q'", path_buf) != st.st_mtime) )
 						{
-							DPRINTF(E_DEBUG, L_INOTIFY, "The file %s was %s.\n",
+							DPRINTF(E_DEBUG, L_INOTIFY, "The file %s was %s.",
 								path_buf, (event->mask & IN_MOVED_TO ? "moved here" : "changed"));
 							inotify_insert_file(0, esc_name, path_buf);
 						}
@@ -793,7 +793,7 @@ start_inotify(void *args)
 				}
 				else if ( event->mask & (IN_DELETE|IN_MOVED_FROM) )
 				{
-					DPRINTF(E_DEBUG, L_INOTIFY, "The %s %s was %s.\n",
+					DPRINTF(E_DEBUG, L_INOTIFY, "The %s %s was %s.",
 						(event->mask & IN_ISDIR ? "directory" : "file"),
 						path_buf, (event->mask & IN_MOVED_FROM ? "moved away" : "deleted"));
 					if ( event->mask & IN_ISDIR )
@@ -812,7 +812,7 @@ quitting:
 	watches = NULL;
 	lastwatch = NULL;
 
-	DPRINTF(E_DEBUG, L_INOTIFY, "Thread stopped.\n");
+	DPRINTF(E_DEBUG, L_INOTIFY, "Thread stopped.");
 
 	return 0;
 }
