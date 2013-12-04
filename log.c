@@ -27,7 +27,9 @@
 
 #include "log.h"
 
+#if 0
 static FILE *log_fp = NULL;
+#endif
 static int default_log_level = E_INFO;
 int log_level[L_MAX];
 
@@ -169,8 +171,8 @@ int
 log_init(const char *fname, const char *debug)
 {
 	int i;
-	FILE *fp;
-	short int log_level_set[L_MAX];
+//	FILE *fp;
+//	short int log_level_set[L_MAX];
 	int openlog_option;
 
 	for (i=0; i<L_MAX; i++)
