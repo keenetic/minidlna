@@ -500,7 +500,7 @@ close:
 				continue;
 			get_remote_mac(dest.sin_addr, clients[client].mac);
 			clients[client].addr = dest.sin_addr;
-			DPRINTF(E_INFO, L_SSDP, "Added client [%d/%s/%02X:%02X:%02X:%02X:%02X:%02X] to cache slot %d.",
+			DPRINTF(E_DEBUG, L_SSDP, "Added client [%d/%s/%02X:%02X:%02X:%02X:%02X:%02X] to cache slot %d.",
 			                         type, inet_ntoa(clients[client].addr),
 			                         clients[client].mac[0], clients[client].mac[1], clients[client].mac[2],
 			                         clients[client].mac[3], clients[client].mac[4], clients[client].mac[5], client);
@@ -642,16 +642,16 @@ ProcessSSDPRequest(int s, unsigned short port)
 	           ntohs(sendername.sin_port) );*/
 		if( GETFLAG(DLNA_STRICT_MASK) && (ntohs(sendername.sin_port) <= 1024 || ntohs(sendername.sin_port) == 1900) )
 		{
-			DPRINTF(E_INFO, L_SSDP, "WARNING: Ignoring invalid SSDP M-SEARCH from %s [bad source port %d]",
+			DPRINTF(E_DEBUG, L_SSDP, "WARNING: Ignoring invalid SSDP M-SEARCH from %s [bad source port %d]",
 			   inet_ntoa(sendername.sin_addr), ntohs(sendername.sin_port));
 		}
 		else if( !man || (strncmp(man, "\"ssdp:discover\"", 15) != 0) )
 		{
-			DPRINTF(E_INFO, L_SSDP, "WARNING: Ignoring invalid SSDP M-SEARCH from %s [bad %s header '%.*s']",
+			DPRINTF(E_DEBUG, L_SSDP, "WARNING: Ignoring invalid SSDP M-SEARCH from %s [bad %s header '%.*s']",
 			   inet_ntoa(sendername.sin_addr), "MAN", man_len, man);
 		}
 		else if( !mx || mx == mx_end || mx_val < 0 ) {
-			DPRINTF(E_INFO, L_SSDP, "WARNING: Ignoring invalid SSDP M-SEARCH from %s [bad %s header '%.*s']",
+			DPRINTF(E_DEBUG, L_SSDP, "WARNING: Ignoring invalid SSDP M-SEARCH from %s [bad %s header '%.*s']",
 			   inet_ntoa(sendername.sin_addr), "MX", mx_len, mx);
 		}
 		else if( st && (st_len > 0) )
@@ -724,13 +724,13 @@ ProcessSSDPRequest(int s, unsigned short port)
 		}
 		else
 		{
-			DPRINTF(E_INFO, L_SSDP, "Invalid SSDP M-SEARCH from %s:%d",
+			DPRINTF(E_DEBUG, L_SSDP, "Invalid SSDP M-SEARCH from %s:%d",
 	        	   inet_ntoa(sendername.sin_addr), ntohs(sendername.sin_port));
 		}
 	}
 	else
 	{
-		DPRINTF(E_WARN, L_SSDP, "Unknown udp packet received from %s:%d",
+		DPRINTF(E_DEBUG, L_SSDP, "Unknown udp packet received from %s:%d",
 		       inet_ntoa(sendername.sin_addr), ntohs(sendername.sin_port));
 	}
 }

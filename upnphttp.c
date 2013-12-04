@@ -158,7 +158,7 @@ SearchClientCache(struct in_addr addr, int quiet)
 				}
 			}
 			if( !quiet )
-				DPRINTF(E_INFO, L_HTTP, "Client found in cache. [type %d/entry %d]",
+				DPRINTF(E_DEBUG, L_HTTP, "Client found in cache. [type %d/entry %d]",
 					clients[i].type, i);
 			return i;
 		}
@@ -540,7 +540,7 @@ next_header:
 					continue;
 				get_remote_mac(h->clientaddr, clients[n].mac);
 				clients[n].addr = h->clientaddr;
-				DPRINTF(E_INFO, L_HTTP, "Added client [%d/%s/%02X:%02X:%02X:%02X:%02X:%02X] to cache slot %d.",
+				DPRINTF(E_DEBUG, L_HTTP, "Added client [%d/%s/%02X:%02X:%02X:%02X:%02X:%02X] to cache slot %d.",
 				                         h->req_client, inet_ntoa(clients[n].addr),
 				                         clients[n].mac[0], clients[n].mac[1], clients[n].mac[2],
 				                         clients[n].mac[3], clients[n].mac[4], clients[n].mac[5], n);
@@ -1744,7 +1744,7 @@ SendResp_resizedimg(struct upnphttp * h, char * object)
 		goto resized_error;
 	}
 
-	DPRINTF(E_INFO, L_HTTP, "Serving resized image for ObjectId: %lld [%s]", id, file_path);
+	DPRINTF(E_DEBUG, L_HTTP, "Serving resized image for ObjectId: %lld [%s]", id, file_path);
 	switch( rotate )
 	{
 		case 90:

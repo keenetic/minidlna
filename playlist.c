@@ -128,7 +128,7 @@ fill_playlists()
 	sqlite_int64 plID, detailID;
 	char sql_buf[] = "SELECT ID, NAME, PATH from PLAYLISTS where ITEMS > FOUND";
 
-	DPRINTF(E_WARN, L_SCANNER, "Parsing playlists...\n");
+	DPRINTF(E_DEBUG, L_SCANNER, "Parsing playlists...");
 
 	if( sql_get_table(db, sql_buf, &result, &rows, NULL) != SQLITE_OK ) 
 		return -1;
@@ -152,7 +152,7 @@ fill_playlists()
 		if( start_plist(plpath, NULL, &file, NULL, type) != 0 )
 			continue;
 
-		DPRINTF(E_DEBUG, L_SCANNER, "Scanning playlist \"%s\" [%s]\n", plname, plpath);
+		DPRINTF(E_DEBUG, L_SCANNER, "Scanning playlist \"%s\" [%s]", plname, plpath);
 		if( sql_get_int_field(db, "SELECT ID from OBJECTS where PARENT_ID = '"MUSIC_PLIST_ID"'"
 		                          " and NAME = '%q'", plname) <= 0 )
 		{
@@ -196,7 +196,7 @@ fill_playlists()
 			}
 			
 			fname = plist.path;
-			DPRINTF(E_DEBUG, L_SCANNER, "%d: checking database for %s\n", plist.track, plist.path);
+			DPRINTF(E_DEBUG, L_SCANNER, "%d: checking database for %s", plist.track, plist.path);
 			if( !strpbrk(fname, "\\/") )
 			{
 				len = strlen(fname) + strlen(plpath) + 2;
@@ -218,7 +218,7 @@ retry:
 			if( detailID > 0 )
 			{
 found:
-				DPRINTF(E_DEBUG, L_SCANNER, "+ %s found in db\n", fname);
+				DPRINTF(E_DEBUG, L_SCANNER, "+ %s found in db", fname);
 				sql_exec(db, "INSERT into OBJECTS"
 				             " (OBJECT_ID, PARENT_ID, CLASS, DETAIL_ID, NAME, REF_ID) "
 				             "SELECT"
@@ -239,7 +239,7 @@ found:
 			}
 			else
 			{
-				DPRINTF(E_DEBUG, L_SCANNER, "- %s not found in db\n", fname);
+				DPRINTF(E_DEBUG, L_SCANNER, "- %s not found in db", fname);
 				if( strchr(fname, '\\') )
 				{
 					fname = modifyString(fname, "\\", "/", 0);
@@ -261,7 +261,7 @@ found:
 		sql_exec(db, "UPDATE PLAYLISTS set FOUND = %d where ID = %lld", found, plID);
 	}
 	sqlite3_free_table(result);
-	DPRINTF(E_WARN, L_SCANNER, "Finished parsing playlists.\n");
+	DPRINTF(E_DEBUG, L_SCANNER, "Finished parsing playlists.");
 
 	return 0;
 }

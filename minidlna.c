@@ -1328,7 +1328,7 @@ read_configuration_updates(
 	struct lan_addr_s new_lan_addr[MAX_LAN_ADDR];
 	char *rescan_type = NULL;
 
-	DPRINTF(E_INFO, L_GENERAL,
+	DPRINTF(E_DEBUG, L_GENERAL,
 		"starting update...");
 
 	if(readoptionsfile(updatefile) < 0)
@@ -1515,7 +1515,7 @@ read_configuration_updates(
 		}
 	} else
 	{
-		DPRINTF(E_INFO, L_GENERAL, "do not need database rescan.");
+		DPRINTF(E_DEBUG, L_GENERAL, "do not need database rescan.");
 	}
 
 	for(i = 0; i < n_lan_addr; i++)
