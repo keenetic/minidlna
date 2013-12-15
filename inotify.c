@@ -764,7 +764,7 @@ start_inotify(void *args)
 				sprintf(path_buf, "%s/%s", get_path_from_wd(event->wd), event->name);
 				if ( event->mask & IN_ISDIR && (event->mask & (IN_CREATE|IN_MOVED_TO)) )
 				{
-					DPRINTF(E_DEBUG, L_INOTIFY,  "The directory %s was %s.",
+					DPRINTF(E_INFO, L_INOTIFY,  "The directory %s was %s.",
 						path_buf, (event->mask & IN_MOVED_TO ? "moved here" : "created"));
 					inotify_insert_directory(pollfds[0].fd, esc_name, path_buf);
 				}
@@ -773,7 +773,7 @@ start_inotify(void *args)
 				{
 					if( S_ISLNK(st.st_mode) )
 					{
-						DPRINTF(E_DEBUG, L_INOTIFY, "The symbolic link %s was %s.",
+						DPRINTF(E_INFO, L_INOTIFY, "The symbolic link %s was %s.",
 							path_buf, (event->mask & IN_MOVED_TO ? "moved here" : "created"));
 						if( stat(path_buf, &st) == 0 && S_ISDIR(st.st_mode) )
 							inotify_insert_directory(pollfds[0].fd, esc_name, path_buf);
@@ -785,7 +785,7 @@ start_inotify(void *args)
 						if( (event->mask & IN_MOVED_TO) ||
 						    (sql_get_int_field(db, "SELECT TIMESTAMP from DETAILS where PATH = '%q'", path_buf) != st.st_mtime) )
 						{
-							DPRINTF(E_DEBUG, L_INOTIFY, "The file %s was %s.",
+							DPRINTF(E_INFO, L_INOTIFY, "The file %s was %s.",
 								path_buf, (event->mask & IN_MOVED_TO ? "moved here" : "changed"));
 							inotify_insert_file(0, esc_name, path_buf);
 						}
@@ -793,7 +793,7 @@ start_inotify(void *args)
 				}
 				else if ( event->mask & (IN_DELETE|IN_MOVED_FROM) )
 				{
-					DPRINTF(E_DEBUG, L_INOTIFY, "The %s %s was %s.",
+					DPRINTF(E_INFO, L_INOTIFY, "The %s %s was %s.",
 						(event->mask & IN_ISDIR ? "directory" : "file"),
 						path_buf, (event->mask & IN_MOVED_FROM ? "moved away" : "deleted"));
 					if ( event->mask & IN_ISDIR )

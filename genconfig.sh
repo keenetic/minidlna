@@ -24,13 +24,13 @@ CONFIGFILE="config.h"
 CONFIGMACRO="__CONFIG_H__"
 
 # Database path
-DB_PATH="/media/DISK_A1/minidlna"
+DB_PATH="/tmp/mnt/minidlna"
 # Log path
 LOG_PATH="${DB_PATH}"
 
 # detecting the OS name and version
-OS_NAME=`uname -s`
-OS_VERSION=`uname -r`
+OS_NAME=NDMS
+OS_VERSION=2
 TIVO="/*#define TIVO_SUPPORT*/"
 NETGEAR="/*#define NETGEAR*/"
 READYNAS="/*#define READYNAS*/"
@@ -146,6 +146,12 @@ case $OS_NAME in
 			fi
 		fi
 		;;
+
+	NDMS)
+		OS_NAME=NDMS
+		OS_VERSION=2.00
+		OS_URL=http://www.ndmsystems.com/
+	;;
 	*)
 		echo "Unknown OS : $OS_NAME"
 		exit 1
@@ -170,12 +176,12 @@ echo " * of BSD daemon() */" >> ${CONFIGFILE}
 echo "#define USE_DAEMON" >> ${CONFIGFILE}
 echo "" >> ${CONFIGFILE}
 
-echo "/* Enable if the system inotify.h exists.  Otherwise our own inotify.h will be used. */" >> ${CONFIGFILE}
-if [ -f /usr/include/sys/inotify.h ]; then
+#echo "/* Enable if the system inotify.h exists.  Otherwise our own inotify.h will be used. */" >> ${CONFIGFILE}
+#if [ -f /usr/include/sys/inotify.h ]; then
 echo "#define HAVE_INOTIFY_H" >> ${CONFIGFILE}
-else
-echo "/*#define HAVE_INOTIFY_H*/" >> ${CONFIGFILE}
-fi
+#else
+#echo "/*#define HAVE_INOTIFY_H*/" >> ${CONFIGFILE}
+#fi
 echo "" >> ${CONFIGFILE}
 
 echo "/* Enable if the system iconv.h or nconv.h exists.  ID3 tag reading in various character sets will not work properly otherwise. */" >> ${CONFIGFILE}
