@@ -162,9 +162,11 @@ inotify_create_watches(int fd)
 	for( media_path = media_dirs; media_path != NULL; media_path = media_path->next )
 	{
 		DPRINTF(E_DEBUG, L_INOTIFY, "Add watch to %s", media_path->path);
-		add_watch(fd, media_path->path);
+		add_dir_watch(fd, media_path->path, NULL);
 		num_watches++;
 	}
+
+#if 0
 	sql_get_table(db, "SELECT PATH from DETAILS where MIME is NULL and PATH is not NULL", &result, &rows, NULL);
 	for( i=1; i <= rows; i++ )
 	{
@@ -172,14 +174,18 @@ inotify_create_watches(int fd)
 		add_watch(fd, result[i]);
 		num_watches++;
 	}
+
 	sqlite3_free_table(result);
-		
+#endif
+
 	max_watches = fopen("/proc/sys/fs/inotify/max_user_watches", "r");
 	if( max_watches )
 	{
 		if( fscanf(max_watches, "%10u", &watch_limit) < 1 )
 			watch_limit = 8192;
+
 		fclose(max_watches);
+
 		if( (watch_limit < DESIRED_WATCH_LIMIT) || (watch_limit < (num_watches*4/3)) )
 		{
 			max_watches = fopen("/proc/sys/fs/inotify/max_user_watches", "w");
@@ -280,10 +286,12 @@ int add_dir_watch(int fd, char * path, char * filename)
 					strcmp(e->d_name, "..") == 0 )
 					continue;
 				if( (e->d_type == DT_DIR) ||
-					(e->d_type == DT_UNKNOWN && resolve_unknown_type(dir, NO_MEDIA) == TYPE_DIR) )
+					((e->d_type == DT_UNKNOWN)
+						&& (resolve_unknown_type(dir, NO_MEDIA) == TYPE_DIR)) )
+				{
 					i += add_dir_watch(fd, dir, e->d_name);
+				}
 			}
-
 			dirent_free(d);
 		}
 	}
@@ -579,6 +587,7 @@ inotify_remove_file(const char * path)
 		rows = sql_exec(db, "DELETE from CAPTIONS where PATH = '%q'", path);
 		return rows;
 	}
+
 	/* Invalidate the scanner cache so we don't insert files into non-existent containers */
 	valid_cache = 0;
 	playlist = is_playlist(path);
@@ -698,10 +707,10 @@ inotify_remove_directory(int fd, const char * path)
 }
 
 void *
-start_inotify(void *args)
+start_inotify()
 {
 	struct pollfd pollfds[1];
-	int timeout = 300;
+	int timeout = 1000;
 	char buffer[BUF_LEN];
 	char path_buf[PATH_MAX];
 	int length, i = 0;
