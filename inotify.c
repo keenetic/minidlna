@@ -65,6 +65,8 @@ static struct watch *watches = NULL;
 static struct watch *lastwatch = NULL;
 static time_t next_pl_fill = 0;
 
+static int add_dir_watch(int fd, char * path, char * filename);
+
 char *get_path_from_wd(int wd)
 {
 	struct watch *w = watches;
@@ -155,10 +157,12 @@ inotify_create_watches(int fd)
 {
 	FILE * max_watches;
 	unsigned int num_watches = 0, watch_limit;
-	char **result;
-	int i, rows = 0;
+	int rows = 0;
 	struct media_dir_s * media_path;
-
+#if 0
+	int i;
+	char **result;
+#endif
 	for( media_path = media_dirs; media_path != NULL; media_path = media_path->next )
 	{
 		DPRINTF(E_DEBUG, L_INOTIFY, "Add watch to %s", media_path->path);
