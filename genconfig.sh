@@ -184,13 +184,9 @@ echo "#define HAVE_INOTIFY_H" >> ${CONFIGFILE}
 #fi
 echo "" >> ${CONFIGFILE}
 
-echo "/* Enable if the system iconv.h or nconv.h exists.  ID3 tag reading in various character sets will not work properly otherwise. */" >> ${CONFIGFILE}
-if [ -f $STAGING_DIR/usr/include/nconv.h ]; then
-echo "#define HAVE_NCONV_H" >> ${CONFIGFILE}
-echo "/*#define HAVE_ICONV_H*/" >> ${CONFIGFILE}
-elif [ -f $STAGING_DIR/usr/include/iconv.h ]; then
+echo "/* Enable if the system ndm/conv.h exists.  ID3 tag reading in various character sets will not work properly otherwise. */" >> ${CONFIGFILE}
+if [ -f $STAGING_DIR/usr/include/ndm/conv.h ]; then
 echo "#define HAVE_ICONV_H" >> ${CONFIGFILE}
-echo "/*#define HAVE_NCONV_H*/" >> ${CONFIGFILE}
 else
 echo -e "\nWARNING!!  Iconv support not found.  ID3 tag reading may not work."
 echo "/*#define HAVE_ICONV_H*/" >> ${CONFIGFILE}

@@ -29,8 +29,8 @@
 #include "textutils.h"
 // #include "log.h"
 
-#include <nconv.h>
-
+#define NDM_CONV_ICONV_COMPAT
+#include <ndm/conv.h>
 
 #define MAX_BUF 4096
 
@@ -94,9 +94,11 @@ start_plist(const char *path, struct song_metadata *psong, struct stat *stat, ch
 
 char *utf8_fgets(char *pbuf, int isize, FILE *fin) {
 	char ctb[MAX_BUF / 4];
-	nconv_t cnv;
+	iconv_t cnv;
+	size_t err;
 	size_t inbytes, outbytes;
-	char 	*in, *out;
+	const char *in;
+	char *out;
 	
 	/* no conversion needed */
 	if( _utf8bom ) return fgets(pbuf, isize, fin);
@@ -108,7 +110,7 @@ char *utf8_fgets(char *pbuf, int isize, FILE *fin) {
 	if( !_utf8bom ) _utf8bom = is_utf8(ctb);
 	
 	/* fallback */
-	if( _utf8bom || (cnv = nconv_open("utf-8", "cp1251")) == (nconv_t)-1 ) {
+	if( _utf8bom || (cnv = iconv_open("utf-8", "cp1251")) == (iconv_t)-1 ) {
 		strncpy(pbuf, ctb, isize - 1);
 		pbuf[isize - 1] = 0;
 		return pbuf;
@@ -119,10 +121,10 @@ char *utf8_fgets(char *pbuf, int isize, FILE *fin) {
 	
 	inbytes = strlen(ctb) + 1;
 	outbytes = isize;
-	nconv(cnv, &in, &inbytes, &out, &outbytes);
+	err = iconv(cnv, &in, &inbytes, &out, &outbytes);
 	pbuf[isize - 1] = 0;
 	
-	nconv_close(cnv);
+	iconv_close(cnv);
 	return pbuf;
 }
 

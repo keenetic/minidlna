@@ -8,8 +8,9 @@
 #include <libavformat/avformat.h>
 #include <libavcodec/avcodec.h>
 #include "misc.h"
-#include <nconv.h>
 
+#define NDM_CONV_ICONV_COMPAT
+#include <ndm/conv.h>
 
 static void meta_parse(struct song_metadata *psong, const char *key, const char *val) {
 	if( !strcasecmp(key, "ALBUM") ) {
@@ -81,10 +82,11 @@ static int _get_lavffileinfo(char *filename, struct song_metadata *psong) {
 	AVMetadataTag *tag;
 	AVMetadata *m;
 	int err;
-	nconv_t cnv;
+	iconv_t cnv;
 	char cutf8[1024];
 	size_t inbytes, outbytes;
-	char 	*in, *out;
+	const char *in;
+	char *out;
 	
 	av_register_all();
 	if( (err = av_open_input_file(&ic, filename, NULL, 0, NULL)) < 0 ) 
@@ -95,17 +97,17 @@ static int _get_lavffileinfo(char *filename, struct song_metadata *psong) {
 		return err;
 	}
 	
-	cnv = nconv_open("utf-8", "cp1251");
+	cnv = iconv_open("utf-8", "cp1251");
 	tag = NULL;
 	m = ic->metadata;
 	if( m ) {
 		while( (tag = av_metadata_get(m, "", tag, AV_METADATA_IGNORE_SUFFIX)) ) {
-			if( cnv != (nconv_t)-1 && !is_utf8(tag->value) ) {
+			if( cnv != (iconv_t)-1 && !is_utf8(tag->value) ) {
 				in = tag->value;
 				out = cutf8;
 				inbytes = strlen(tag->value) + 1;
 				outbytes = sizeof(cutf8);
-				err = nconv(cnv, &in, &inbytes, &out, &outbytes);
+				err = iconv(cnv, &in, &inbytes, &out, &outbytes);
 				meta_parse(psong, tag->key, cutf8);
 			} else meta_parse(psong, tag->key, tag->value);
 		}
@@ -128,6 +130,6 @@ static int _get_lavffileinfo(char *filename, struct song_metadata *psong) {
 		psong->bitrate = (((uint64_t)(psong->file_size) * 1000) / (psong->song_length / 8));
 	
 	av_close_input_file(ic);	
-	if( cnv != (nconv_t)-1 ) nconv_close(cnv);
+	if( cnv != (iconv_t)-1 ) iconv_close(cnv);
 	return 0;
 }
