@@ -31,7 +31,7 @@
 
 #include "config.h"
 #include <netinet/in.h>
-#include <linux/if.h>
+#include <net/if.h>
 #include <netinet/in.h>
 
 /* structure for storing lan addresses
