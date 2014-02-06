@@ -255,6 +255,7 @@ int add_dir_watch(int fd, char * path, char * filename)
 	char buf[PATH_MAX];
 	int wd;
 	int i = 0;
+	unsigned char type;
 
 	if( filename )
 	{
@@ -286,13 +287,25 @@ int add_dir_watch(int fd, char * path, char * filename)
 		{
 			while( readdir_r(ds, d, &e) == 0 && e != NULL )
 			{
-				if( strcmp(e->d_name, ".") == 0 ||
-					strcmp(e->d_name, "..") == 0 )
+				if((strcmp(e->d_name, ".") == 0)
+					|| (strcmp(e->d_name, "..") == 0)
+					|| (strcmp(e->d_name, "lost+found") == 0))
 					continue;
-				if( (e->d_type == DT_DIR) ||
-					((e->d_type == DT_UNKNOWN)
-						&& (resolve_unknown_type(dir, NO_MEDIA) == TYPE_DIR)) )
-				{
+
+				type = e->d_type;
+
+				if(type == DT_UNKNOWN) {
+
+					char pathbuf[PATH_MAX];
+
+					snprintf(pathbuf, sizeof(pathbuf), "%s/%s", dir, e->d_name);
+
+					if(resolve_unknown_type(pathbuf, NO_MEDIA) == TYPE_DIR) {
+						type = DT_DIR;
+					}
+				}
+
+				if(type == DT_DIR) {
 					i += add_dir_watch(fd, dir, e->d_name);
 				}
 			}
