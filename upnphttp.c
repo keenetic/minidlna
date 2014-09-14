@@ -1123,12 +1123,12 @@ Process_upnphttp(struct upnphttp * h)
 		n = recv(h->socket, buf, 2048, 0);
 		if(n<0)
 		{
-			DPRINTF(E_ERROR, L_HTTP, "recv (state0): %s", strerror(errno));
+			DPRINTF(E_DEBUG, L_HTTP, "recv (state0): %s", strerror(errno));
 			h->state = 100;
 		}
 		else if(n==0)
 		{
-			DPRINTF(E_WARN, L_HTTP, "HTTP Connection closed unexpectedly");
+			DPRINTF(E_DEBUG, L_HTTP, "HTTP Connection closed unexpectedly");
 			h->state = 100;
 		}
 		else
