@@ -1,2 +1,10 @@
 *.[oa]
-miniupnpd
+minidlna
+.built*
+.configured_*
+.dep_files
+.prepared_*
+ipkg-*
+testupnpdescgen
+config.h
+config.mk

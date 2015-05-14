@@ -27,6 +27,7 @@
 #include <sys/stat.h>
 #include <sys/time.h>
 #include <sys/resource.h>
+#include <limits.h>
 
 #include "config.h"
 #include "minidlna.h"
@@ -714,8 +715,6 @@ ScanDirectory(const char * status_file, int media_dir_size, const char * dir, co
 {
 	struct dirent **namelist;
 	int i, n, startID=0;
-	char parent_id[PATH_MAX];
-	char full_path[PATH_MAX];
 	char * name = NULL, *objectID;
 	static long long unsigned int fileno = 0;
 	enum file_types type;
@@ -753,13 +752,20 @@ ScanDirectory(const char * status_file, int media_dir_size, const char * dir, co
 		startID = get_next_available_id("OBJECTS", BROWSEDIR_ID);
 	}
 
+	char *full_path = malloc(PATH_MAX);
+	if( full_path == NULL )
+	{
+		DPRINTF(E_ERROR, L_SCANNER, "malloc() error");
+		return;
+	}
+
 	for (i=0; i < n; i++)
 	{
 		if( quitting )
 			break;
 
 		type = TYPE_UNKNOWN;
-		snprintf(full_path, sizeof(full_path), "%s/%s", dir, namelist[i]->d_name);
+		snprintf(full_path, PATH_MAX, "%s/%s", dir, namelist[i]->d_name);
 		name = escape_tag(namelist[i]->d_name, 1);
 
 		FILE *fp = fopen(status_file, "w");
@@ -801,8 +807,16 @@ ScanDirectory(const char * status_file, int media_dir_size, const char * dir, co
 			}
 
 			insert_directory(name, full_path, BROWSEDIR_ID, (parent ? parent:""), i+startID);
-			sprintf(parent_id, "%s$%X", (parent ? parent:""), i+startID);
+			char * parent_id = malloc(PATH_MAX);
+			if( parent_id == NULL )
+			{
+				DPRINTF(E_ERROR, L_SCANNER, "malloc() error");
+				free(full_path);
+				return;
+			}
+			snprintf(parent_id, PATH_MAX, "%s$%X", (parent ? parent:""), i+startID);
 			ScanDirectory(status_file, media_dir_size, full_path, parent_id, dir_type);
+			free(parent_id);
 		}
 		else if( type == TYPE_FILE && (access(full_path, R_OK) == 0) )
 		{
@@ -822,6 +836,7 @@ next_entry:
 		free(namelist[i]);
 	}
 	free(namelist);
+	free(full_path);
 	if( parent )
 	{
 		chdir(dirname((char*)dir));

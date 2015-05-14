@@ -33,6 +33,7 @@
 #include <netinet/in.h>
 #include <net/if.h>
 #include <netinet/in.h>
+#include <time.h>
 
 /* structure for storing lan addresses
  * with ascii representation and mask */

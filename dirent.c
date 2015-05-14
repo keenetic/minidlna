@@ -1,5 +1,6 @@
 #include <stdlib.h>
 #include <stddef.h>
+#include <limits.h>
 #include "dirent.h"
 
 /* Calculate the required buffer size (in bytes) for directory       *

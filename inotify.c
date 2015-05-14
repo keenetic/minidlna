@@ -29,6 +29,7 @@
 #include <sys/time.h>
 #include <sys/resource.h>
 #include <poll.h>
+#include <limits.h>
 #ifdef HAVE_INOTIFY_H
 #include <sys/inotify.h>
 #else
@@ -252,14 +253,20 @@ int add_dir_watch(int fd, char * path, char * filename)
 	DIR *ds;
 	struct dirent *e;
 	char *dir;
-	char buf[PATH_MAX];
+	char *buf = NULL;
 	int wd;
 	int i = 0;
 	unsigned char type;
 
 	if( filename )
 	{
-		snprintf(buf, sizeof(buf), "%s/%s", path, filename);
+		buf = malloc(PATH_MAX);
+		if( buf == NULL )
+		{
+			DPRINTF(E_ERROR, L_INOTIFY, "malloc() error");
+			return i;
+		}
+		snprintf(buf, PATH_MAX, "%s/%s", path, filename);
 		dir = buf;
 	}
 	else
@@ -279,7 +286,6 @@ int add_dir_watch(int fd, char * path, char * filename)
 	if( ds != NULL )
 	{
 		struct dirent *d = dirent_allocate(ds);
-
 		if( !d )
 		{
 			DPRINTF(E_ERROR, L_INOTIFY, "dirent allocation failed!\n");
@@ -295,14 +301,20 @@ int add_dir_watch(int fd, char * path, char * filename)
 				type = e->d_type;
 
 				if(type == DT_UNKNOWN) {
+					char *pathbuf = malloc(PATH_MAX);
 
-					char pathbuf[PATH_MAX];
+					if( pathbuf == NULL )
+					{
+						DPRINTF(E_ERROR, L_INOTIFY, "malloc() error");
+						free(buf);
+						return i;
+					}
 
-					snprintf(pathbuf, sizeof(pathbuf), "%s/%s", dir, e->d_name);
-
+					snprintf(pathbuf, PATH_MAX, "%s/%s", dir, e->d_name);
 					if(resolve_unknown_type(pathbuf, NO_MEDIA) == TYPE_DIR) {
 						type = DT_DIR;
 					}
+					free(pathbuf);
 				}
 
 				if(type == DT_DIR) {
@@ -316,7 +328,9 @@ int add_dir_watch(int fd, char * path, char * filename)
 	{
 		DPRINTF(E_ERROR, L_INOTIFY, "Opendir error! [%s]", strerror(errno));
 	}
+
 	closedir(ds);
+	free(buf);
 	i++;
 
 	return(i);
@@ -477,7 +491,6 @@ inotify_insert_directory(int fd, char *name, const char * path)
 	DIR * ds;
 	struct dirent * e;
 	char *id, *parent_buf, *esc_name;
-	char path_buf[PATH_MAX];
 	int wd, dir_add;
 	enum file_types type = TYPE_UNKNOWN;
 	enum media_types dir_type = ALL_MEDIA;
@@ -553,12 +566,19 @@ inotify_insert_directory(int fd, char *name, const char * path)
 		return -1;
 	}
 
+	char *path_buf = malloc(PATH_MAX);
+	if( path_buf == NULL )
+	{
+		DPRINTF(E_ERROR, L_INOTIFY, "malloc() error");
+		return -1;
+	}
+
 	while( readdir_r(ds, d, &e) == 0 && e != NULL )
 	{
 		if( e->d_name[0] == '.' )
 			continue;
 		esc_name = escape_tag(e->d_name, 1);
-		snprintf(path_buf, sizeof(path_buf), "%s/%s", path, e->d_name);
+		snprintf(path_buf, PATH_MAX, "%s/%s", path, e->d_name);
 		switch( e->d_type )
 		{
 			case DT_DIR:
@@ -584,6 +604,7 @@ inotify_insert_directory(int fd, char *name, const char * path)
 	}
 	dirent_free(d);
 	closedir(ds);
+	free(path_buf);
 
 	return 0;
 }
