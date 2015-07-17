@@ -14,7 +14,7 @@
 # License along with MiniDLNA; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307
 # USA.
-AC_INIT(MiniDLNA,1.1.3,,minidlna)
+AC_INIT(MiniDLNA,1.1.4,,minidlna)
 #LT_INIT
 
 AC_CANONICAL_TARGET
@@ -249,10 +249,6 @@ done
 test x"$ac_cv_header_jpeglib_h" != x"yes" && AC_MSG_ERROR([libjpeg headers not found or not usable])
 test x"$ac_cv_header_sqlite3_h" != x"yes" && AC_MSG_ERROR([libsqlite3 headers not found or not usable])
 test x"$ac_cv_header_libexif_exif_loader_h" != x"yes" && AC_MSG_ERROR([libexif headers not found or not usable])
-test x"$ac_cv_header_id3tag_h" != x"yes" && AC_MSG_ERROR([libid3tag headers not found or not usable])
-test x"$ac_cv_header_ogg_ogg_h" != x"yes" && AC_MSG_ERROR([libogg headers not found or not usable])
-test x"$ac_cv_header_vorbis_codec_h" != x"yes" && AC_MSG_ERROR([libvorbis headers not found or not usable])
-test x"$ac_cv_header_FLAC_metadata_h" != x"yes" && AC_MSG_ERROR([libFLAC headers not found or not usable])
 
 CFLAGS_SAVE="$CFLAGS"
 CFLAGS="$CFLAGS -Wall -Werror"
@@ -410,17 +406,6 @@ for dir in "" /usr/local $SEARCH_DIR; do
     if test -n "$dir"; then
         LDFLAGS="$LDFLAGS -L$dir/lib"
     fi
-    AC_CHECK_LIB([id3tag], [id3_file_open], [LIBID3TAG_LIBS="-lid3tag"], [unset ac_cv_lib_id3tag_id3_file_open; LDFLAGS="$LDFLAGS_SAVE"; continue])
-    break
-done
-test x"$ac_cv_lib_id3tag_id3_file_open" = x"yes" || AC_MSG_ERROR([Could not find libid3tag])
-AC_SUBST(LIBID3TAG_LIBS)
-
-LDFLAGS_SAVE="$LDFLAGS"
-for dir in "" /usr/local $SEARCH_DIR; do
-    if test -n "$dir"; then
-        LDFLAGS="$LDFLAGS -L$dir/lib"
-    fi
     AC_CHECK_LIB(sqlite3, sqlite3_open, [LIBSQLITE3_LIBS="-lsqlite3"], [unset ac_cv_lib_sqlite3_sqlite3_open; LDFLAGS="$LDFLAGS_SAVE"; continue])
     AC_CHECK_LIB(sqlite3, sqlite3_malloc, [AC_DEFINE([HAVE_SQLITE3_MALLOC], [1], [Define to 1 if the sqlite3_malloc function exists.])])
     AC_CHECK_LIB(sqlite3, sqlite3_prepare_v2, [AC_DEFINE([HAVE_SQLITE3_PREPARE_V2], [1], [Define to 1 if the sqlite3_prepare_v2 function exists.])])
@@ -449,34 +434,6 @@ AC_CHECK_LIB(avutil ,[av_rescale_q], [LIBAVUTIL_LIBS="-lavutil"], [AC_MSG_ERROR(
 AC_SUBST(LIBAVUTIL_LIBS)
 
 AC_CHECK_LIB(pthread, pthread_create)
-
-# test if we have vorbisfile
-# prior versions had ov_open_callbacks in libvorbis, test that, too.
-AC_CHECK_LIB(vorbisfile, ov_open_callbacks,
-        [AC_CHECK_HEADERS([vorbis/vorbisfile.h],
-          AM_CONDITIONAL(HAVE_VORBISFILE, true)
-          AC_DEFINE(HAVE_VORBISFILE,1,[Have vorbisfile]),
-          AM_CONDITIONAL(HAVE_VORBISFILE, false)
-          AC_DEFINE(HAVE_VORBISFILE,0,[lacking vorbisfile]))],
-          AM_CONDITIONAL(HAVE_VORBISFILE, false),
-          -lvorbis -logg)
-AC_CHECK_LIB(FLAC, FLAC__stream_decoder_init_stream,
-        [AC_CHECK_HEADERS([FLAC/all.h],
-         AM_CONDITIONAL(HAVE_FLAC, true)
-         AC_DEFINE(HAVE_FLAC,1,[Have flac]),
-         AM_CONDITIONAL(HAVE_FLAC, false))],
-         AM_CONDITIONAL(HAVE_FLAC, false),
-        -logg)
-# test without -logg to see whether we really need it (libflac can be without)
-AC_CHECK_LIB(FLAC, FLAC__stream_decoder_init_ogg_stream,
-         AM_CONDITIONAL(HAVE_FLAC, true)
-         AC_DEFINE(HAVE_FLAC,1,[Have flac])
-         AM_CONDITIONAL(NEED_OGG, false),
-        [AM_CONDITIONAL(NEED_OGG, true)])
-AC_CHECK_LIB(vorbisfile, vorbis_comment_query,
-        AM_CONDITIONAL(NEED_VORBIS, false),
-        AM_CONDITIONAL(NEED_VORBIS, true),
-        -logg)
 
 ################################################################################################################
 ### Header checks
@@ -606,7 +563,6 @@ AC_ARG_ENABLE(static,
                 AC_MSG_RESULT([no])
         ]
 )
-
 
 case "$target_os" in
 	darwin*)

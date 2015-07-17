@@ -103,7 +103,7 @@ _lang2cp(char *lang)
 	}
 	return -2;
 }
-
+#if 0
 static unsigned char*
 _get_utf8_text(const id3_ucs4_t* native_text)
 {
@@ -179,7 +179,7 @@ _get_utf8_text(const id3_ucs4_t* native_text)
 
 	return utf8_text;
 }
-
+#endif
 
 static void
 vc_scan(struct song_metadata *psong, const char *comment, const size_t length)

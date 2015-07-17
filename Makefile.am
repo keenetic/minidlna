@@ -30,36 +30,24 @@ minidlnad_SOURCES = minidlna.c upnphttp.c upnpdescgen.c upnpsoap.c \
 			playlist.c image_utils.c albumart.c log.c \
 			containers.c tagutils/tagutils.c
 
-#if NEED_VORBIS
-vorbisflag = -lvorbis
-#endif
-
-#if NEED_OGG
-flacoggflag = -logg
-#endif
-
 minidlnad_LDADD = \
 	@LIBJPEG_LIBS@ \
-	@LIBID3TAG_LIBS@ \
 	@LIBSQLITE3_LIBS@ \
 	@LIBAVFORMAT_LIBS@ \
 	@LIBAVUTIL_LIBS@ \
 	@LIBEXIF_LIBS@ \
-	@LIBINTL@ \
-	@LIBICONV@ \
-	-lFLAC  $(flacoggflag) $(vorbisflag)
+	-lndm
 
 minidlnad_LDFLAGS = @STATIC_LDFLAGS@
 
 testupnpdescgen_SOURCES = testupnpdescgen.c upnpdescgen.c
 testupnpdescgen_LDADD = \
 	@LIBJPEG_LIBS@ \
-	@LIBID3TAG_LIBS@ \
 	@LIBSQLITE3_LIBS@ \
 	@LIBAVFORMAT_LIBS@ \
 	@LIBAVUTIL_LIBS@ \
 	@LIBEXIF_LIBS@ \
-	-lFLAC  $(flacoggflag) $(vorbisflag)
+	-lndm
 
 SUFFIXES = .tmpl .
 
