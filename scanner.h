@@ -81,6 +81,6 @@ int
 CreateDatabase(void);
 
 void
-start_scanner();
+start_scanner(const char *status_file);
 
 #endif

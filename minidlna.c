@@ -151,7 +151,7 @@ sigterm(int sig)
 {
 	signal(sig, SIG_IGN);	/* Ignore this signal while we are quitting */
 
-	DPRINTF(E_WARN, L_GENERAL, "received signal %d, good-bye\n", sig);
+	/*DPRINTF(E_WARN, L_GENERAL, "received signal %d, good-bye\n", sig);*/
 
 	quitting = 1;
 }
@@ -304,7 +304,7 @@ open_db(sqlite3 **sq3)
 }
 
 static void
-check_db(sqlite3 *db, int new_db, pid_t *scanner_pid)
+check_db(sqlite3 *db, int new_db, pid_t *scanner_pid, const char *statusfile)
 {
 	struct media_dir_s *media_path = NULL;
 	char cmd[PATH_MAX*2];
@@ -376,7 +376,7 @@ rescan:
 		open_db(&db);
 		if (*scanner_pid == 0) /* child (scanner) process */
 		{
-			start_scanner();
+			start_scanner(statusfile);
 			sqlite3_close(db);
 			log_close();
 			freeoptions();
@@ -384,10 +384,10 @@ rescan:
 		}
 		else if (*scanner_pid < 0)
 		{
-			start_scanner();
+			start_scanner(statusfile);
 		}
 #else
-		start_scanner();
+		start_scanner(statusfile);
 #endif
 	}
 }
@@ -483,7 +483,9 @@ static void init_nls(void)
  * 6) compute presentation URL
  * 7) set signal handlers */
 static int
-init(int argc, char **argv)
+init(	int argc, char * * argv,
+		const char **updatefile,
+		const char **statusfile)
 {
 	int i;
 	int pid;
@@ -503,6 +505,8 @@ init(int argc, char **argv)
 	int ifaces = 0;
 	media_types types;
 	uid_t uid = 0;
+	*updatefile = NULL;
+	*statusfile = NULL;
 
 	/* first check if "-f" option is used */
 	for (i=2; i<argc; i++)
@@ -855,12 +859,18 @@ init(int argc, char **argv)
 			else
 				DPRINTF(E_FATAL, L_GENERAL, "Option -%c takes one argument.\n", argv[i][1]);
 			break;
+		case 'U':
+			if(i+1 < argc)
+				*updatefile = argv[++i];
+			else
+				DPRINTF(E_FATAL, L_GENERAL, "Option -%c takes one argument.\n", argv[i][1]);
 			break;
-#ifdef __linux__
 		case 'S':
-			SETFLAG(SYSTEMD_MASK);
+			if(i+1 < argc)
+				*statusfile = argv[++i];
+			else
+				DPRINTF(E_FATAL, L_GENERAL, "Option -%c takes one argument.\n", argv[i][1]);
 			break;
-#endif
 		case 'V':
 			printf("Version " MINIDLNA_VERSION "\n");
 			exit(0);
@@ -878,11 +888,7 @@ init(int argc, char **argv)
 			"\t\t[-i network_interface] [-u uid_to_run_as]\n"
 			"\t\t[-t notify_interval] [-P pid_filename]\n"
 			"\t\t[-s serial] [-m model_number]\n"
-#ifdef __linux__
-			"\t\t[-w url] [-R] [-L] [-S] [-V] [-h]\n"
-#else
-			"\t\t[-w url] [-R] [-L] [-V] [-h]\n"
-#endif
+			"\t\t[-w url] [-R] [-L] [-S] [-U] [-V] [-h]\n"
 			"\nNotes:\n\tNotify interval is in seconds. Default is 895 seconds.\n"
 			"\tDefault pid file is %s.\n"
 			"\tWith -d minidlna will run in debug mode (not daemonize).\n"
@@ -891,9 +897,8 @@ init(int argc, char **argv)
 			"\t-h displays this text\n"
 			"\t-R forces a full rescan\n"
 			"\t-L do not create playlists\n"
-#ifdef __linux__
-			"\t-S changes behaviour for systemd\n"
-#endif
+			"\t-S status_file\n"
+			"\t-U configuration update file\n"
 			"\t-V print the version number\n",
 			argv[0], pidfilename);
 		return 1;
@@ -912,7 +917,7 @@ init(int argc, char **argv)
 	if (debug_flag)
 	{
 		pid = getpid();
-		strcpy(log_str+65, "maxdebug");
+		//strcpy(log_str+65, "maxdebug");
 		log_level = log_str;
 	}
 	else if (GETFLAG(SYSTEMD_MASK))
@@ -995,6 +1000,8 @@ int
 main(int argc, char **argv)
 {
 	int ret, i;
+	const char *updatefile = NULL;
+	const char *statusfile = NULL;
 	int shttpl = -1;
 	int smonitor = -1;
 	LIST_HEAD(httplisthead, upnphttp) upnphttphead;
@@ -1019,7 +1026,7 @@ main(int argc, char **argv)
 		log_level[i] = E_WARN;
 	init_nls();
 
-	ret = init(argc, argv);
+	ret = init(argc, argv, &updatefile, &statusfile);
 	if (ret != 0)
 		return 1;
 
@@ -1038,7 +1045,7 @@ main(int argc, char **argv)
 		if (updateID == -1)
 			ret = -1;
 	}
-	check_db(db, ret, &scanner_pid);
+	check_db(db, ret, &scanner_pid, statusfile);
 #ifdef HAVE_INOTIFY
 	if( GETFLAG(INOTIFY_MASK) )
 	{

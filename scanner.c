@@ -714,7 +714,7 @@ filter_avp(scan_filter *d)
 }
 
 static void
-ScanDirectory(const char *dir, const char *parent, media_types dir_types)
+ScanDirectory(const char *dir, const char *parent, media_types dir_types, const char * status_file)
 {
 	struct dirent **namelist;
 	int i, n, startID = 0;
@@ -778,6 +778,17 @@ ScanDirectory(const char *dir, const char *parent, media_types dir_types)
 		type = TYPE_UNKNOWN;
 		snprintf(full_path, PATH_MAX, "%s/%s", dir, namelist[i]->d_name);
 		name = escape_tag(namelist[i]->d_name, 1);
+
+		if (status_file) {
+
+			FILE *fp = fopen(status_file, "w");
+			if(fp != NULL) {
+				/* write a relative new name to a scanning status file */
+				fprintf(fp, "%s\n", full_path + strlen(dir) + 1); //1 for slash
+				fclose(fp);
+			}
+		}
+
 		if( is_dir(namelist[i]) == 1 )
 		{
 			type = TYPE_DIR;
@@ -795,7 +806,7 @@ ScanDirectory(const char *dir, const char *parent, media_types dir_types)
 			char *parent_id;
 			insert_directory(name, full_path, BROWSEDIR_ID, THISORNUL(parent), i+startID);
 			xasprintf(&parent_id, "%s$%X", THISORNUL(parent), i+startID);
-			ScanDirectory(full_path, parent_id, dir_types);
+			ScanDirectory(full_path, parent_id, dir_types, status_file);
 			free(parent_id);
 		}
 		else if( type == TYPE_FILE && (access(full_path, R_OK) == 0) )
@@ -835,7 +846,7 @@ _notify_stop(void)
 }
 
 void
-start_scanner()
+start_scanner(const char *status_file)
 {
 	struct media_dir_s *media_path;
 	char path[MAXPATHLEN];
@@ -867,9 +878,14 @@ start_scanner()
 			id = GetFolderMetadata(bname, media_path->path, NULL, NULL, 0);
 		/* Use TIMESTAMP to store the media type */
 		sql_exec(db, "UPDATE DETAILS set TIMESTAMP = %d where ID = %lld", media_path->types, (long long)id);
-		ScanDirectory(media_path->path, parent, media_path->types);
+		ScanDirectory(media_path->path, parent, media_path->types, status_file);
 		sql_exec(db, "INSERT into SETTINGS values (%Q, %Q)", "media_dir", media_path->path);
 	}
+
+	/* try to remove in any way */
+	if (status_file)
+		unlink(status_file);
+
 	_notify_stop();
 	/* Create this index after scanning, so it doesn't slow down the scanning process.
 	 * This index is very useful for large libraries used with an XBox360 (or any
