@@ -24,12 +24,13 @@
 #include <stdarg.h>
 #include <string.h>
 #include <time.h>
+#include <sys/syslog.h>
 
 #include "upnpglobalvars.h"
 #include "log.h"
 
 static FILE *log_fp = NULL;
-static const int _default_log_level = E_WARN;
+static const int _default_log_level = E_INFO;
 int log_level[L_MAX];
 
 const char *facility_name[] = {
@@ -75,6 +76,7 @@ int find_matching_name(const char* str, const char* names[]) {
 	return -1;
 }
 
+#if 0
 int
 log_init(const char *fname, const char *debug)
 {
@@ -170,3 +172,71 @@ log_err(int level, enum _log_facility facility, char *fname, int lineno, char *f
 
 	return;
 }
+#else
+int
+log_init(const char *fname, const char *debug)
+{
+	int i,openlog_option;
+
+	int level = find_matching_name(debug, level_name);
+	int default_log_level = (level == -1) ? _default_log_level : level;
+
+	for (i = 0; i < L_MAX; i++)
+		log_level[i] = default_log_level;
+
+	openlog_option = LOG_CONS;
+//	openlog_option |= LOG_PID;		/* add pid in log */
+//	openlog_option |= LOG_PERROR;		/* also log on stderr */
+
+//	setlogmask(LOG_UPTO(LOG_NOTICE));
+
+	openlog("minidlna", openlog_option, LOG_DAEMON);
+
+	return 0;
+}
+
+void
+log_err(int level, enum _log_facility facility, char *fname, int lineno, char *fmt, ...)
+{
+	char * errbuf;
+	va_list ap;
+	int syslog_level = LOG_DEBUG;
+
+	if (level && level>log_level[facility] && level>E_FATAL)
+		return;
+
+	va_start(ap, fmt);
+	if (vasprintf(&errbuf, fmt, ap) == -1) {
+		va_end(ap);
+		return;
+	}
+	va_end(ap);
+
+	switch (level) {
+		case E_OFF:
+		case E_FATAL:
+		case E_ERROR:
+			syslog_level = LOG_ERR;
+		break;
+		case E_WARN:
+			syslog_level = LOG_WARNING;
+		break;
+		case E_INFO:
+			syslog_level = LOG_INFO;
+		break;
+		default:
+			syslog_level = LOG_DEBUG;
+	};
+
+	if (level >= E_DEBUG)
+		syslog(syslog_level, "%s:%d: %s: %s", fname, lineno, level_name[level], errbuf);
+	else
+		syslog(syslog_level, "%s", errbuf);
+
+	free(errbuf);
+
+	if (level==E_FATAL)
+		exit(-1);
+
+}
+#endif

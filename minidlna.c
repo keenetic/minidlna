@@ -499,7 +499,7 @@ init(	int argc, char * * argv,
 	char *string, *word;
 	char *path;
 	char buf[PATH_MAX];
-	char log_str[75] = "general,artwork,database,inotify,scanner,metadata,http,ssdp,tivo=warn";
+	char log_str[75] = "general,artwork,database,inotify,scanner,metadata,http,ssdp,tivo=info";
 	char *log_level = NULL;
 	struct media_dir_s *media_dir;
 	int ifaces = 0;
