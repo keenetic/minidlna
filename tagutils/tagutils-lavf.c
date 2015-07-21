@@ -98,6 +98,7 @@ static int _get_lavffileinfo(char *filename, struct song_metadata *psong) {
 	char *out;
 
 	av_register_all();
+	//TODO: lav_open
 	if( (err = av_open_input_file(&ic, filename, NULL, 0, NULL)) < 0 )
 		return err;
 

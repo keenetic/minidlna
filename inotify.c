@@ -599,7 +599,7 @@ inotify_remove_file(const char * path)
 		sql_exec(db, "DELETE from DETAILS where ID = %lld", detailID);
 		sql_exec(db, "DELETE from OBJECTS where DETAIL_ID = %lld", detailID);
 	}
-	snprintf(art_cache, sizeof(art_cache), "%s/art_cache%s", db_path, path);
+	snprintf(art_cache, sizeof(art_cache), "%s/%s/%s", db_path, DLNA_DB_CACHE_DIR, path);
 	remove(art_cache);
 
 	return 0;

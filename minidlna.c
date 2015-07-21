@@ -99,6 +99,8 @@
 # warning "Your SQLite3 library appears to be too old!  Please use 3.5.1 or newer."
 # define sqlite3_threadsafe() 0
 #endif
+
+static volatile int update_configuration = 0;
  
 /* OpenAndConfHTTPSocket() :
  * setup the socket used to handle incoming HTTP connections. */
@@ -169,9 +171,9 @@ static void
 sighup(int sig)
 {
 	signal(sig, sighup);
-	DPRINTF(E_WARN, L_GENERAL, "received signal %d, re-read\n", sig);
+	DPRINTF(E_WARN, L_GENERAL, "received signal %d, update configuration\n", sig);
 
-	reload_ifaces(1);
+	update_configuration = 1;
 }
 
 /* record the startup time */
@@ -279,12 +281,24 @@ getfriendlyname(char *buf, int len)
 }
 
 static int
+db_clean_cache(const char *const db_path)
+{
+	if( recursive_remove(db_path, DLNA_DB_FILE_NAME) == 0 &&
+		recursive_remove(db_path, DLNA_DB_CACHE_DIR) == 0 )
+	{
+		return 0;
+	}
+
+	return -1;
+}
+
+static int
 open_db(sqlite3 **sq3)
 {
 	char path[PATH_MAX];
 	int new_db = 0;
 
-	snprintf(path, sizeof(path), "%s/files.db", db_path);
+	snprintf(path, sizeof(path), "%s/%s", db_path, DLNA_DB_FILE_NAME);
 	if (access(path, F_OK) != 0)
 	{
 		new_db = 1;
@@ -307,7 +321,6 @@ static void
 check_db(sqlite3 *db, int new_db, pid_t *scanner_pid, const char *statusfile)
 {
 	struct media_dir_s *media_path = NULL;
-	char cmd[PATH_MAX*2];
 	char **result;
 	int i, rows = 0;
 	int ret;
@@ -352,7 +365,7 @@ check_db(sqlite3 *db, int new_db, pid_t *scanner_pid, const char *statusfile)
 	{
 rescan:
 		if (ret < 0)
-			DPRINTF(E_WARN, L_GENERAL, "Creating new database at %s/files.db\n", db_path);
+			DPRINTF(E_WARN, L_GENERAL, "Creating new database at %s/%s\n", db_path, DLNA_DB_FILE_NAME);
 		else if (ret == 1)
 			DPRINTF(E_WARN, L_GENERAL, "New media_dir detected; rescanning...\n");
 		else if (ret == 2)
@@ -362,9 +375,10 @@ rescan:
 				ret, DB_VERSION);
 		sqlite3_close(db);
 
-		snprintf(cmd, sizeof(cmd), "rm -rf %s/files.db %s/art_cache", db_path, db_path);
-		if (system(cmd) != 0)
-			DPRINTF(E_FATAL, L_GENERAL, "Failed to clean old file cache!  Exiting...\n");
+		if( db_clean_cache(db_path) )
+		{
+			DPRINTF(E_WARN, L_GENERAL, "Failed to clean old file cache.\n");
+		}
 
 		open_db(&db);
 		if (CreateDatabase() != 0)
@@ -560,6 +574,7 @@ init(	int argc, char * * argv,
 				}
 				runtime_vars.ifaces[ifaces++] = word;
 			}
+			runtime_vars.ifaces[ifaces] = NULL;
 			break;
 		case UPNPPORT:
 			runtime_vars.port = atoi(ary_options[i].value);
@@ -738,6 +753,9 @@ init(	int argc, char * * argv,
 			if (strtobool(ary_options[i].value))
 				SETFLAG(MERGE_MEDIA_DIRS_MASK);
 			break;
+		case RESCAN:
+			/* ignore here */
+			break;
 		default:
 			DPRINTF(E_ERROR, L_GENERAL, "Unknown option in file %s\n",
 				optionsfile);
@@ -827,6 +845,7 @@ init(	int argc, char * * argv,
 					break;
 				}
 				runtime_vars.ifaces[ifaces++] = argv[i];
+				runtime_vars.ifaces[ifaces] = NULL;
 			}
 			else
 				DPRINTF(E_FATAL, L_GENERAL, "Option -%c takes one argument.\n", argv[i][1]);
@@ -838,9 +857,8 @@ init(	int argc, char * * argv,
 			runtime_vars.port = -1; // triggers help display
 			break;
 		case 'R':
-			snprintf(buf, sizeof(buf), "rm -rf %s/files.db %s/art_cache", db_path, db_path);
-			if (system(buf) != 0)
-				DPRINTF(E_FATAL, L_GENERAL, "Failed to clean old file cache. EXITING\n");
+			if ( db_clean_cache(db_path) )
+				DPRINTF(E_WARN, L_GENERAL, "Failed to clean old file cache.\n");
 			break;
 		case 'u':
 			if (i+1 != argc)
@@ -994,6 +1012,120 @@ init(	int argc, char * * argv,
 	return 0;
 }
 
+
+static void
+stop_scanning(pid_t *scanner_pid)
+{
+	/* kill the scanner */
+	if(*scanner_pid != 0)
+	{
+		kill(*scanner_pid, SIGTERM);
+		waitpid(*scanner_pid, NULL, 0);
+	}
+
+	scanning = 0;
+	*scanner_pid = 0;
+}
+
+static void
+read_configuration_updates(
+		const char *const updatefile,
+		const char *const statusfile,
+		pid_t *scanner_pid,
+		pthread_t *inotify_thread)
+{
+	int ifaces = 0;
+	int rescan = 0;
+	int full = 0;
+	DPRINTF(E_INFO, L_GENERAL,
+		"Starting configuration update (%s)...\n", updatefile);
+
+	if(readoptionsfile(updatefile) < 0) {
+		/* only error if file exists or using -f */
+		if(access(updatefile, F_OK) == 0) {
+			DPRINTF(E_ERROR, L_GENERAL,
+				"Error reading configuration file %s\n", updatefile);
+		}
+
+	} else {
+		int i;
+		char *string, *word;
+		char *rescan_type = NULL;
+
+		for(i=0; i < num_options; i++) {
+
+			switch(ary_options[i].id) {
+			case UPNPIFNAME:
+				for (string = ary_options[i].value; (word = strtok(string, ",")); string = NULL) {
+					if (ifaces >= MAX_LAN_ADDR) {
+						DPRINTF(E_ERROR, L_GENERAL, "Too many interfaces (max: %d), ignoring %s\n",
+							MAX_LAN_ADDR, word);
+						break;
+					}
+					runtime_vars.ifaces[ifaces++] = word;
+				}
+				runtime_vars.ifaces[ifaces] = NULL;
+				break;
+			case RESCAN:
+				rescan_type = ary_options[i].value;
+				if(strcmp(rescan_type, "full") == 0) {
+					rescan = 1;
+					full = 1;
+				} else if(strcmp(rescan_type, "update") == 0) {
+					rescan = 1;
+				} else
+					DPRINTF(E_ERROR, L_GENERAL, "Unknown rescan type: %s\n", rescan_type);
+
+				break;
+			default:
+				/* ignore other options */
+				break;
+			}
+		}
+	}
+
+	if (ifaces)
+		reload_ifaces(1);
+
+	if (rescan) {
+		const int restart_notifier = ((*inotify_thread) != 0);
+
+		DPRINTF(E_DEBUG, L_GENERAL, "stopping...\n");
+
+		/* stop a inotify thread and a scanner process */
+		stop_scanning(scanner_pid);
+/*
+		stop_notifier = 1;
+
+		if(restart_notifier) {
+			pthread_join(*inotify_thread, NULL);
+			DPRINTF(E_INFO, L_GENERAL, "Notifier thread stopped.\n");//DEBUG
+		}
+
+		stop_notifier = 0;
+		*inotify_thread = 0;
+*/
+
+		sqlite3_close(db);
+		check_db(db, full, scanner_pid, statusfile);
+		open_db(&db);
+
+#ifdef HAVE_INOTIFY
+		/* start a notification thread with a blocked SIGCHLD */
+		dlna_signal_block(SIGCHLD);
+		if( restart_notifier &&
+			pthread_create(inotify_thread, NULL, start_inotify, NULL) )
+		{
+			DPRINTF(E_FATAL, L_GENERAL, "ERROR: pthread_create() failed for start_inotify.\n");
+		}
+		dlna_signal_unblock(SIGCHLD);
+#endif
+	} else {
+		DPRINTF(E_INFO, L_GENERAL, "No database rescan need.\n");
+	}
+
+}
+
 /* === main === */
 /* process HTTP or SSDP requests */
 int
@@ -1047,13 +1179,17 @@ main(int argc, char **argv)
 	}
 	check_db(db, ret, &scanner_pid, statusfile);
 #ifdef HAVE_INOTIFY
+
 	if( GETFLAG(INOTIFY_MASK) )
 	{
+		dlna_signal_block(SIGCHLD);
 		if (!sqlite3_threadsafe() || sqlite3_libversion_number() < 3005001)
 			DPRINTF(E_ERROR, L_GENERAL, "SQLite library is not threadsafe!  "
 			                            "Inotify will be disabled.\n");
 		else if (pthread_create(&inotify_thread, NULL, start_inotify, NULL) != 0)
 			DPRINTF(E_FATAL, L_GENERAL, "ERROR: pthread_create() failed for start_inotify. EXITING\n");
+
+		dlna_signal_unblock(SIGCHLD);
 	}
 #endif
 	smonitor = OpenAndConfMonitorSocket();
@@ -1204,11 +1340,20 @@ main(int argc, char **argv)
 		FD_ZERO(&writeset);
 		upnpevents_selectfds(&readset, &writeset, &max_fd);
 
+		if(timeout.tv_sec > 2)
+		{
+			/* no more than 3 seconds to wait
+			 * to properly handle signals */
+			timeout.tv_sec = 2;
+		}
+
 		ret = select(max_fd+1, &readset, &writeset, 0, &timeout);
 		if (ret < 0)
 		{
 			if(quitting) goto shutdown;
-			if(errno == EINTR) continue;
+			if(update_configuration || errno == EINTR || errno == EAGAIN)
+				goto update_config;
+
 			DPRINTF(E_ERROR, L_GENERAL, "select(all): %s\n", strerror(errno));
 			DPRINTF(E_FATAL, L_GENERAL, "Failed to select open sockets. EXITING\n");
 		}
@@ -1294,12 +1439,21 @@ main(int argc, char **argv)
 				Delete_upnphttp(e);
 			}
 		}
+
+update_config:
+
+		if(update_configuration) {
+			dlna_signal_block(SIGHUP);
+			read_configuration_updates(updatefile, statusfile,
+				&scanner_pid, &inotify_thread);
+			update_configuration = 0;
+			dlna_signal_unblock(SIGHUP);
+		}
 	}
 
 shutdown:
 	/* kill the scanner */
-	if (scanning && scanner_pid)
-		kill(scanner_pid, SIGKILL);
+	stop_scanning(&scanner_pid); //TODO SIGKILL
 
 	/* kill other child processes */
 	process_reap_children();
@@ -1343,4 +1497,3 @@ shutdown:
 
 	exit(EXIT_SUCCESS);
 }
-

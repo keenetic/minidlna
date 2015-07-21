@@ -64,7 +64,8 @@ static const struct {
 	{ USER_ACCOUNT, "user" },
 	{ FORCE_SORT_CRITERIA, "force_sort_criteria" },
 	{ MAX_CONNECTIONS, "max_connections" },
-	{ MERGE_MEDIA_DIRS, "merge_media_dirs" }
+	{ MERGE_MEDIA_DIRS, "merge_media_dirs" },
+	{ RESCAN, "rescan" }
 };
 
 int
@@ -79,6 +80,8 @@ readoptionsfile(const char * fname)
 	int linenum = 0;
 	int i;
 	enum upnpconfigoptions id;
+
+	num_options = 0;
 
 	if(!fname || *fname == '\0')
 		return -1;

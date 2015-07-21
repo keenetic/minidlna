@@ -78,4 +78,8 @@ int process_check_if_running(const char *fname);
  */
 void process_reap_children(void);
 
+void dlna_signal_block(int sig);
+
+void dlna_signal_unblock(int sig);
+
 #endif // __PROCESS_H__

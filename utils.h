@@ -96,4 +96,9 @@ const char *mime_to_ext(const char * mime);
 int make_dir(char * path, mode_t mode);
 unsigned int DJBHash(uint8_t *data, int len);
 
+struct dirent *dirent_allocate(DIR *dirp);
+void dirent_free(struct dirent *dentry);
+
+int recursive_remove(const char *const path, const char *const entry);
+
 #endif

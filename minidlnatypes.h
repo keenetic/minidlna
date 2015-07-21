@@ -84,4 +84,7 @@ struct album_art_name_s {
 	struct album_art_name_s *next;
 };
 
+#define DLNA_DB_FILE_NAME			".dlna_files.db"
+#define DLNA_DB_CACHE_DIR			".dlna_art_cache"
+
 #endif

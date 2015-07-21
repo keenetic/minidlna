@@ -42,7 +42,7 @@
 static int
 art_cache_exists(const char *orig_path, char **cache_file)
 {
-	if( xasprintf(cache_file, "%s/art_cache%s", db_path, orig_path) < 0 )
+	if( asprintf(cache_file, "%s/%s/%s", db_path, DLNA_DB_CACHE_DIR, orig_path) < 0 )
 		return 0;
 
 	strcpy(strchr(*cache_file, '\0')-4, ".jpg");
