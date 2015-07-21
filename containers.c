@@ -56,7 +56,7 @@ struct magic_container_s magic_containers[] =
 	},
 
 	/* Recent 50 audio items */
-	{ "Recently Added",
+	{ "Недавно Добавленные",
 	  "1$FF0",
 	  NULL,
 	  "\"1$FF0$\" || OBJECT_ID",
@@ -70,7 +70,7 @@ struct magic_container_s magic_containers[] =
 	},
 
 	/* Recent 50 video items */
-	{ "Recently Added",
+	{ "Недавно Добавленные",
 	  "2$FF0",
 	  NULL,
 	  "\"2$FF0$\" || OBJECT_ID",
@@ -84,7 +84,7 @@ struct magic_container_s magic_containers[] =
 	},
 
 	/* Recent 50 image items */
-	{ "Recently Added",
+	{ "Недавно Добавленные",
 	  "3$FF0",
 	  NULL,
 	  "\"3$FF0$\" || OBJECT_ID",

@@ -163,9 +163,9 @@ insert_containers(const char *name, const char *path, const char *refID, const c
 		if( date_taken )
 			date_taken[10] = '\0';
 		else
-			date_taken = _("Unknown Date");
+			date_taken = _("Неизвестная дата");
 		if( !camera )
-			camera = _("Unknown Camera");
+			camera = _("Неизвестная Камера");
 
 		if( valid_cache && strcmp(last_date.name, date_taken) == 0 )
 		{
@@ -283,18 +283,18 @@ insert_containers(const char *name, const char *path, const char *refID, const c
 			{
 				last_artistAlbumAll.objectID++;
 			}
-			if( valid_cache && strcmp(album?album:_("Unknown Album"), last_artistAlbum.name) == 0 )
+			if( valid_cache && strcmp(album?album:_("Неизвестный Альбом"), last_artistAlbum.name) == 0 )
 			{
 				last_artistAlbum.objectID++;
 				//DEBUG DPRINTF(E_DEBUG, L_SCANNER, "Using last artist/album item: %s/%s/%X\n", last_artist.name, last_artist.parentID, last_artist.objectID);
 			}
 			else
 			{
-				insert_container(album?album:_("Unknown Album"), last_artist.parentID, album?last_album.parentID:NULL,
+				insert_container(album?album:_("Неизвестный Альбом"), last_artist.parentID, album?last_album.parentID:NULL,
 				                 "album.musicAlbum", artist, genre, album_art, &objectID, &parentID);
 				sprintf(last_artistAlbum.parentID, "%s$%llX", last_artist.parentID, (long long)parentID);
 				last_artistAlbum.objectID = objectID;
-				strncpyt(last_artistAlbum.name, album ? album : _("Unknown Album"), sizeof(last_artistAlbum.name));
+				strncpyt(last_artistAlbum.name, album ? album : _("Неизвестный Альбом"), sizeof(last_artistAlbum.name));
 				//DEBUG DPRINTF(E_DEBUG, L_SCANNER, "Creating cached artist/album item: %s/%s/%X\n", last_artist.name, last_artist.parentID, last_artist.objectID);
 			}
 			sql_exec(db, "INSERT into OBJECTS"
@@ -316,7 +316,7 @@ insert_containers(const char *name, const char *path, const char *refID, const c
 				sprintf(last_genre.parentID, MUSIC_GENRE_ID"$%llX", (long long)parentID);
 				strncpyt(last_genre.name, genre, sizeof(last_genre.name));
 				/* Add this file to the "- All Artists -" container as well */
-				insert_container(_("- All Artists -"), last_genre.parentID, NULL, "person", NULL, genre, NULL, &objectID, &parentID);
+				insert_container(_("- Все Исполнители -"), last_genre.parentID, NULL, "person", NULL, genre, NULL, &objectID, &parentID);
 				sprintf(last_genreArtistAll.parentID, "%s$%llX", last_genre.parentID, (long long)parentID);
 				last_genreArtistAll.objectID = objectID;
 			}
@@ -324,17 +324,17 @@ insert_containers(const char *name, const char *path, const char *refID, const c
 			{
 				last_genreArtistAll.objectID++;
 			}
-			if( valid_cache && strcmp(artist?artist:_("Unknown Artist"), last_genreArtist.name) == 0 )
+			if( valid_cache && strcmp(artist?artist:_("Неизвестный Исполнитель"), last_genreArtist.name) == 0 )
 			{
 				last_genreArtist.objectID++;
 			}
 			else
 			{
-				insert_container(artist?artist:_("Unknown Artist"), last_genre.parentID, artist?last_artist.parentID:NULL,
+				insert_container(artist?artist:_("Неизвестный Исполнитель"), last_genre.parentID, artist?last_artist.parentID:NULL,
 				                 "person.musicArtist", NULL, genre, NULL, &objectID, &parentID);
 				sprintf(last_genreArtist.parentID, "%s$%llX", last_genre.parentID, (long long)parentID);
 				last_genreArtist.objectID = objectID;
-				strncpyt(last_genreArtist.name, artist ? artist : _("Unknown Artist"), sizeof(last_genreArtist.name));
+				strncpyt(last_genreArtist.name, artist ? artist : _("Неизвестный Исполнитель"), sizeof(last_genreArtist.name));
 				//DEBUG DPRINTF(E_DEBUG, L_SCANNER, "Creating cached genre/artist item: %s/%s/%X\n", last_genreArtist.name, last_genreArtist.parentID, last_genreArtist.objectID);
 			}
 			sql_exec(db, "INSERT into OBJECTS"
@@ -527,25 +527,25 @@ CreateDatabase(void)
 {
 	int ret, i;
 	const char *containers[] = { "0","-1",   "root",
-	                        MUSIC_ID, "0", _("Music"),
-	                    MUSIC_ALL_ID, MUSIC_ID, _("All Music"),
-	                  MUSIC_GENRE_ID, MUSIC_ID, _("Genre"),
-	                 MUSIC_ARTIST_ID, MUSIC_ID, _("Artist"),
-	                  MUSIC_ALBUM_ID, MUSIC_ID, _("Album"),
-	                    MUSIC_DIR_ID, MUSIC_ID, _("Folders"),
-	                  MUSIC_PLIST_ID, MUSIC_ID, _("Playlists"),
+	                        MUSIC_ID, "0", _("Музыка"),
+	                    MUSIC_ALL_ID, MUSIC_ID, _("Вся Музыка"),
+	                  MUSIC_GENRE_ID, MUSIC_ID, _("Жанр"),
+	                 MUSIC_ARTIST_ID, MUSIC_ID, _("Исполнитель"),
+	                  MUSIC_ALBUM_ID, MUSIC_ID, _("Альбом"),
+	                    MUSIC_DIR_ID, MUSIC_ID, _("Папки"),
+	                  MUSIC_PLIST_ID, MUSIC_ID, _("Списки Воспроизведения"),
 
-	                        VIDEO_ID, "0", _("Video"),
-	                    VIDEO_ALL_ID, VIDEO_ID, _("All Video"),
-	                    VIDEO_DIR_ID, VIDEO_ID, _("Folders"),
+	                        VIDEO_ID, "0", _("Видео"),
+	                    VIDEO_ALL_ID, VIDEO_ID, _("Все Видео"),
+	                    VIDEO_DIR_ID, VIDEO_ID, _("Папки"),
 
-	                        IMAGE_ID, "0", _("Pictures"),
-	                    IMAGE_ALL_ID, IMAGE_ID, _("All Pictures"),
-	                   IMAGE_DATE_ID, IMAGE_ID, _("Date Taken"),
-	                 IMAGE_CAMERA_ID, IMAGE_ID, _("Camera"),
-	                    IMAGE_DIR_ID, IMAGE_ID, _("Folders"),
+	                        IMAGE_ID, "0", _("Фотографии"),
+	                    IMAGE_ALL_ID, IMAGE_ID, _("Все Фотографии"),
+	                   IMAGE_DATE_ID, IMAGE_ID, _("Дата Съемки"),
+	                 IMAGE_CAMERA_ID, IMAGE_ID, _("Камера"),
+	                    IMAGE_DIR_ID, IMAGE_ID, _("Папки"),
 
-	                    BROWSEDIR_ID, "0", _("Browse Folders"),
+	                    BROWSEDIR_ID, "0", _("Посмотреть Папки"),
 			0 };
 
 	ret = sql_exec(db, create_objectTable_sqlite);
