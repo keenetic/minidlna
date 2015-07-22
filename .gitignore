@@ -8,3 +8,14 @@ ipkg-*
 testupnpdescgen
 config.h
 config.mk
+/Makefile
+config.log
+config.status
+minidlnad
+.deps
+.dirstamp
+po/Makefile
+po/Makefile.in
+po/POTFILES
+linux/minidlna.init.d.script
+stamp-*
