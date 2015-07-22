@@ -48,6 +48,7 @@
 #include "albumart.h"
 #include "playlist.h"
 #include "log.h"
+#include "process.h"
 
 #define EVENT_SIZE  ( sizeof (struct inotify_event) )
 #define BUF_LEN     ( 1024 * ( EVENT_SIZE + 16 ) )
@@ -65,6 +66,9 @@ struct watch
 static struct watch *watches;
 static struct watch *lastwatch = NULL;
 static time_t next_pl_fill = 0;
+static volatile int stop_notifier;
+
+static int inotify_remove_file(const char * path);
 
 char *get_path_from_wd(int wd)
 {
@@ -527,8 +531,7 @@ inotify_insert_directory(int fd, char *name, const char * path)
 	return 0;
 }
 
-int
-inotify_remove_file(const char * path)
+static int inotify_remove_file(const char * path)
 {
 	char sql[128];
 	char art_cache[PATH_MAX];
@@ -639,8 +642,7 @@ inotify_remove_directory(int fd, const char * path)
 	return ret;
 }
 
-void *
-start_inotify()
+static void *start_inotify(void)
 {
 	struct pollfd pollfds[1];
 	int timeout = 1000;
@@ -660,6 +662,10 @@ start_inotify()
 	{
 		if( quitting )
 			goto quitting;
+
+		if( stop_notifier )
+			goto quitting;
+
 		sleep(1);
 	}
 	inotify_create_watches(pollfds[0].fd);
@@ -668,9 +674,9 @@ start_inotify()
 	sqlite3_release_memory(1<<31);
 	av_register_all();
         
-	while( !quitting )
+	while( !quitting && !stop_notifier )
 	{
-                length = poll(pollfds, 1, timeout);
+		length = poll(pollfds, 1, timeout);
 		if( !length )
 		{
 			if( next_pl_fill && (time(NULL) >= next_pl_fill) )
@@ -682,9 +688,9 @@ start_inotify()
 		}
 		else if( length < 0 )
 		{
-                        if( (errno == EINTR) || (errno == EAGAIN) )
-                                continue;
-                        else
+			if( (errno == EINTR) || (errno == EAGAIN) )
+				continue;
+			else
 				DPRINTF(E_ERROR, L_INOTIFY, "read failed!\n");
 		}
 		else
@@ -756,4 +762,38 @@ quitting:
 
 	return 0;
 }
+
+/* start a notification thread with a blocked SIGCHLD */
+void start_inotify_thread(pthread_t *inotify_thread)
+{
+	if ((inotify_thread && *inotify_thread)) {
+		DPRINTF(E_ERROR, L_INOTIFY, "Notifier thread already running.\n");
+		return;
+	}
+	dlna_signal_block(SIGCHLD);
+	stop_notifier = 0;
+
+	if( pthread_create(inotify_thread, NULL, start_inotify, NULL) ) {
+		DPRINTF(E_FATAL, L_INOTIFY, "ERROR: pthread_create() failed for start_inotify.\n");
+		*inotify_thread = 0;
+	} else {
+		DPRINTF(E_INFO, L_INOTIFY, "Notifier thread started.\n");
+	}
+
+	dlna_signal_unblock(SIGCHLD);
+}
+
+void stop_inotify_thread(pthread_t *inotify_thread)
+{
+	if (inotify_thread && *inotify_thread) {
+		stop_notifier = 1;
+		pthread_join(*inotify_thread, NULL);
+		*inotify_thread = 0;
+		DPRINTF(E_INFO, L_INOTIFY, "Notifier thread stopped.\n");
+	} else {
+		DPRINTF(E_ERROR, L_INOTIFY, "Notifier thread already stopped.\n");
+	}
+
+}
+
 #endif

@@ -1088,38 +1088,20 @@ read_configuration_updates(
 		reload_ifaces(1);
 
 	if (rescan) {
-		const int restart_notifier = ((*inotify_thread) != 0);
 
 		DPRINTF(E_DEBUG, L_GENERAL, "stopping...\n");
 
 		/* stop a inotify thread and a scanner process */
 		stop_scanning(scanner_pid);
-/*
-		stop_notifier = 1;
 
-		if(restart_notifier) {
-			pthread_join(*inotify_thread, NULL);
-			DPRINTF(E_INFO, L_GENERAL, "Notifier thread stopped.\n");//DEBUG
-		}
-
-		stop_notifier = 0;
-		*inotify_thread = 0;
-*/
+		stop_inotify_thread(inotify_thread);
 
 		sqlite3_close(db);
 		check_db(db, full, scanner_pid, statusfile);
 		open_db(&db);
 
-#ifdef HAVE_INOTIFY
-		/* start a notification thread with a blocked SIGCHLD */
-		dlna_signal_block(SIGCHLD);
-		if( restart_notifier &&
-			pthread_create(inotify_thread, NULL, start_inotify, NULL) )
-		{
-			DPRINTF(E_FATAL, L_GENERAL, "ERROR: pthread_create() failed for start_inotify.\n");
-		}
-		dlna_signal_unblock(SIGCHLD);
-#endif
+		start_inotify_thread(inotify_thread);
+
 	} else {
 		DPRINTF(E_INFO, L_GENERAL, "No database rescan need.\n");
 	}
@@ -1182,14 +1164,11 @@ main(int argc, char **argv)
 
 	if( GETFLAG(INOTIFY_MASK) )
 	{
-		dlna_signal_block(SIGCHLD);
 		if (!sqlite3_threadsafe() || sqlite3_libversion_number() < 3005001)
 			DPRINTF(E_ERROR, L_GENERAL, "SQLite library is not threadsafe!  "
 			                            "Inotify will be disabled.\n");
-		else if (pthread_create(&inotify_thread, NULL, start_inotify, NULL) != 0)
-			DPRINTF(E_FATAL, L_GENERAL, "ERROR: pthread_create() failed for start_inotify. EXITING\n");
-
-		dlna_signal_unblock(SIGCHLD);
+		else
+			start_inotify_thread(&inotify_thread);
 	}
 #endif
 	smonitor = OpenAndConfMonitorSocket();
@@ -1481,8 +1460,7 @@ shutdown:
 		close(lan_addr[i].snotify);
 	}
 
-	if (inotify_thread)
-		pthread_join(inotify_thread, NULL);
+	stop_inotify_thread(&inotify_thread);
 
 	sql_exec(db, "UPDATE SETTINGS set VALUE = '%u' where KEY = 'UPDATE_ID'", updateID);
 	sqlite3_close(db);
