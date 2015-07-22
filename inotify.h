@@ -2,6 +2,7 @@
 #define __INOTIFY_H__
 
 #include <signal.h>
+#include <pthread.h>
 
 #ifdef HAVE_INOTIFY
 void start_inotify_thread(pthread_t *inotify_thread);

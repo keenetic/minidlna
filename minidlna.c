@@ -318,12 +318,15 @@ open_db(sqlite3 **sq3)
 }
 
 static void
-check_db(sqlite3 *db, int new_db, pid_t *scanner_pid, const char *statusfile)
+check_db(sqlite3 *db, int new_db, pid_t *scanner_pid, const char *statusfile, int force_rescan)
 {
 	struct media_dir_s *media_path = NULL;
 	char **result;
 	int i, rows = 0;
-	int ret;
+	int ret = 1;
+
+	if (force_rescan)
+		goto rescan;
 
 	if (!new_db)
 	{
@@ -1096,9 +1099,7 @@ read_configuration_updates(
 
 		stop_inotify_thread(inotify_thread);
 
-		sqlite3_close(db);
-		check_db(db, full, scanner_pid, statusfile);
-		open_db(&db);
+		check_db(db, 0, scanner_pid, statusfile, full);
 
 		start_inotify_thread(inotify_thread);
 
@@ -1159,7 +1160,7 @@ main(int argc, char **argv)
 		if (updateID == -1)
 			ret = -1;
 	}
-	check_db(db, ret, &scanner_pid, statusfile);
+	check_db(db, ret, &scanner_pid, statusfile, 0);
 #ifdef HAVE_INOTIFY
 
 	if( GETFLAG(INOTIFY_MASK) )

@@ -612,7 +612,7 @@ int recursive_remove(
 
 				if(ret == 0)
 				{
-					DPRINTF(E_WARN, L_GENERAL,
+					DPRINTF(E_INFO, L_GENERAL,
 						"%s directory removed.\n", name);
 				}
 				else
@@ -629,7 +629,7 @@ int recursive_remove(
 
 			if(ret == 0)
 			{
-				DPRINTF(E_WARN, L_GENERAL, "%s removed.\n", name);
+				DPRINTF(E_INFO, L_GENERAL, "%s removed.\n", name);
 			}
 			else
 			{

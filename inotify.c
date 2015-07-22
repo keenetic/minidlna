@@ -157,10 +157,12 @@ inotify_create_watches(int fd)
 
 	for( media_path = media_dirs; media_path != NULL; media_path = media_path->next )
 	{
-		DPRINTF(E_DEBUG, L_INOTIFY, "Add watch to %s\n", media_path->path);
+		DPRINTF(E_INFO, L_INOTIFY, "Add watch to %s\n", media_path->path);
 		add_watch(fd, media_path->path);
+		//add_dir_watch(fd, media_path->path, NULL);
 		num_watches++;
 	}
+#if 1
 	sql_get_table(db, "SELECT PATH from DETAILS where MIME is NULL and PATH is not NULL", &result, &rows, NULL);
 	for( i=1; i <= rows; i++ )
 	{
@@ -169,6 +171,7 @@ inotify_create_watches(int fd)
 		num_watches++;
 	}
 	sqlite3_free_table(result);
+#endif
 		
 	max_watches = fopen("/proc/sys/fs/inotify/max_user_watches", "r");
 	if( max_watches )
@@ -237,13 +240,19 @@ int add_dir_watch(int fd, char * path, char * filename)
 	DIR *ds;
 	struct dirent *e;
 	char *dir;
-	char buf[PATH_MAX];
+	char *buf = NULL;
 	int wd;
 	int i = 0;
 
 	if( filename )
 	{
-		snprintf(buf, sizeof(buf), "%s/%s", path, filename);
+		buf = malloc(PATH_MAX);
+		if( buf == NULL ) {
+			DPRINTF(E_ERROR, L_INOTIFY, "malloc() error");
+			return i;
+		}
+
+		snprintf(buf, PATH_MAX, "%s/%s", path, filename);
 		dir = buf;
 	}
 	else
@@ -277,6 +286,7 @@ int add_dir_watch(int fd, char * path, char * filename)
 		DPRINTF(E_ERROR, L_INOTIFY, "Opendir error! [%s]\n", strerror(errno));
 	}
 	closedir(ds);
+	free(buf);
 	i++;
 
 	return(i);
@@ -390,7 +400,7 @@ inotify_insert_file(char * name, const char * path)
 
 		do
 		{
-			//DEBUG DPRINTF(E_DEBUG, L_INOTIFY, "Checking %s\n", parent_buf);
+			DPRINTF(E_DEBUG, L_INOTIFY, "Checking %s\n", parent_buf);
 			id = sql_get_text_field(db, "SELECT OBJECT_ID from OBJECTS o left join DETAILS d on (d.ID = o.DETAIL_ID)"
 			                            " where d.PATH = '%q' and REF_ID is NULL", parent_buf);
 			if( id )
@@ -425,13 +435,13 @@ inotify_insert_file(char * name, const char * path)
 
 	if( !depth )
 	{
-		//DEBUG DPRINTF(E_DEBUG, L_INOTIFY, "Inserting %s\n", name);
+		DPRINTF(E_DEBUG, L_INOTIFY, "Inserting %s\n", name);
 		insert_file(name, path, id+2, get_next_available_id("OBJECTS", id), types);
 		sqlite3_free(id);
 		if( (is_audio(path) || is_playlist(path)) && next_pl_fill != 1 )
 		{
 			next_pl_fill = time(NULL) + 120; // Schedule a playlist scan for 2 minutes from now.
-			//DEBUG DPRINTF(E_WARN, L_INOTIFY,  "Playlist scan scheduled for %s", ctime(&next_pl_fill));
+			DPRINTF(E_WARN, L_INOTIFY,  "Playlist scan scheduled for %s", ctime(&next_pl_fill));
 		}
 	}
 	return depth;
@@ -443,7 +453,6 @@ inotify_insert_directory(int fd, char *name, const char * path)
 	DIR * ds;
 	struct dirent * e;
 	char *id, *parent_buf, *esc_name;
-	char path_buf[PATH_MAX];
 	int wd;
 	enum file_types type = TYPE_UNKNOWN;
 	media_types dir_types = ALL_MEDIA;
@@ -497,12 +506,20 @@ inotify_insert_directory(int fd, char *name, const char * path)
 		DPRINTF(E_ERROR, L_INOTIFY, "opendir failed! [%s]\n", strerror(errno));
 		return -1;
 	}
+
+	char *path_buf = malloc(PATH_MAX);
+	if( path_buf == NULL ) {
+		DPRINTF(E_ERROR, L_INOTIFY, "malloc() error");
+		closedir(ds);
+		return -1;
+	}
+
 	while( (e = readdir(ds)) )
 	{
 		if( e->d_name[0] == '.' )
 			continue;
 		esc_name = escape_tag(e->d_name, 1);
-		snprintf(path_buf, sizeof(path_buf), "%s/%s", path, e->d_name);
+		snprintf(path_buf, PATH_MAX, "%s/%s", path, e->d_name);
 		switch( e->d_type )
 		{
 			case DT_DIR:
@@ -527,6 +544,7 @@ inotify_insert_directory(int fd, char *name, const char * path)
 		free(esc_name);
 	}
 	closedir(ds);
+	free(path_buf);
 
 	return 0;
 }
