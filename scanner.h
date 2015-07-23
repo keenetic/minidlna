@@ -83,4 +83,6 @@ CreateDatabase(void);
 void
 start_scanner(const char *status_file);
 
+int is_sys_dir(const char *dirname);
+
 #endif

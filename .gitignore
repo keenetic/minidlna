@@ -19,3 +19,5 @@ po/Makefile.in
 po/POTFILES
 linux/minidlna.init.d.script
 stamp-*
+config.guess
+config.sub

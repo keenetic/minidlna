@@ -166,7 +166,7 @@ inotify_create_watches(int fd)
 	sql_get_table(db, "SELECT PATH from DETAILS where MIME is NULL and PATH is not NULL", &result, &rows, NULL);
 	for( i=1; i <= rows; i++ )
 	{
-		DPRINTF(E_DEBUG, L_INOTIFY, "Add watch to %s\n", result[i]);
+		DPRINTF(E_INFO, L_INOTIFY, "Add watch to %s\n", result[i]);
 		add_watch(fd, result[i]);
 		num_watches++;
 	}
@@ -276,6 +276,12 @@ int add_dir_watch(int fd, char * path, char * filename)
 			if( strcmp(e->d_name, ".") == 0 ||
 			    strcmp(e->d_name, "..") == 0 )
 				continue;
+
+			if (is_sys_dir(e->d_name)) {
+				DPRINTF(E_DEBUG, L_INOTIFY, "Ignore dir %s\n", e->d_name);
+				continue;
+			}
+
 			if( (e->d_type == DT_DIR) ||
 			    (e->d_type == DT_UNKNOWN && resolve_unknown_type(dir, NO_MEDIA) == TYPE_DIR) )
 				i += add_dir_watch(fd, dir, e->d_name);
@@ -342,6 +348,7 @@ inotify_insert_file(char * name, const char * path)
 			if( !is_audio(path) &&
 			    !is_video(path) &&
 			    !is_playlist(path) )
+			    return -1;
 			break;
 		case TYPE_AUDIO|TYPE_IMAGES:
 			if( !is_image(path) &&
@@ -732,7 +739,7 @@ static void *start_inotify(void)
 				snprintf(path_buf, sizeof(path_buf), "%s/%s", get_path_from_wd(event->wd), event->name);
 				if ( event->mask & IN_ISDIR && (event->mask & (IN_CREATE|IN_MOVED_TO)) )
 				{
-					DPRINTF(E_DEBUG, L_INOTIFY,  "The directory %s was %s.\n",
+					DPRINTF(E_INFO, L_INOTIFY,  "The directory %s was %s.\n",
 						path_buf, (event->mask & IN_MOVED_TO ? "moved here" : "created"));
 					inotify_insert_directory(pollfds[0].fd, esc_name, path_buf);
 				}
@@ -741,7 +748,7 @@ static void *start_inotify(void)
 				{
 					if( S_ISLNK(st.st_mode) )
 					{
-						DPRINTF(E_DEBUG, L_INOTIFY, "The symbolic link %s was %s.\n",
+						DPRINTF(E_INFO, L_INOTIFY, "The symbolic link %s was %s.\n",
 							path_buf, (event->mask & IN_MOVED_TO ? "moved here" : "created"));
 						if( stat(path_buf, &st) == 0 && S_ISDIR(st.st_mode) )
 							inotify_insert_directory(pollfds[0].fd, esc_name, path_buf);
@@ -753,7 +760,7 @@ static void *start_inotify(void)
 						if( (event->mask & IN_MOVED_TO) ||
 						    (sql_get_int_field(db, "SELECT TIMESTAMP from DETAILS where PATH = '%q'", path_buf) != st.st_mtime) )
 						{
-							DPRINTF(E_DEBUG, L_INOTIFY, "The file %s was %s.\n",
+							DPRINTF(E_INFO, L_INOTIFY, "The file %s was %s.\n",
 								path_buf, (event->mask & IN_MOVED_TO ? "moved here" : "changed"));
 							inotify_insert_file(esc_name, path_buf);
 						}
@@ -761,7 +768,7 @@ static void *start_inotify(void)
 				}
 				else if ( event->mask & (IN_DELETE|IN_MOVED_FROM) )
 				{
-					DPRINTF(E_DEBUG, L_INOTIFY, "The %s %s was %s.\n",
+					DPRINTF(E_INFO, L_INOTIFY, "The %s %s was %s.\n",
 						(event->mask & IN_ISDIR ? "directory" : "file"),
 						path_buf, (event->mask & IN_MOVED_FROM ? "moved away" : "deleted"));
 					if ( event->mask & IN_ISDIR )

@@ -713,6 +713,25 @@ filter_avp(scan_filter *d)
 	       );
 }
 
+int is_sys_dir(const char *dirname)
+{
+	char *MS_System_folder[] = {"SYSTEM VOLUME INFORMATION", "RECYCLER", "RECYCLED", "$RECYCLE.BIN", NULL};
+	char *Linux_System_folder[] = {"lost+found", NULL};
+	int i;
+
+	for (i = 0; MS_System_folder[i] != NULL; ++i) {
+		if (!strcasecmp(dirname, MS_System_folder[i]))
+			return 1;
+	}
+
+	for (i = 0; Linux_System_folder[i] != NULL; ++i) {
+		if (!strcasecmp(dirname, Linux_System_folder[i]))
+		return 1;
+	}
+
+	return 0;
+}
+
 static void
 ScanDirectory(const char *dir, const char *parent, media_types dir_types, const char * status_file)
 {
@@ -787,6 +806,11 @@ ScanDirectory(const char *dir, const char *parent, media_types dir_types, const 
 				fprintf(fp, "%s\n", full_path + strlen(dir) + 1); //1 for slash
 				fclose(fp);
 			}
+		}
+
+		if (is_sys_dir(name)) {
+			DPRINTF(E_DEBUG, L_SCANNER, "Ignore dir %s\n", name);
+			continue;
 		}
 
 		if( is_dir(namelist[i]) == 1 )
