@@ -740,6 +740,11 @@ with_db_path
 with_os_name
 with_os_version
 with_os_url
+with_manufacturer
+with_manufacturer_url
+with_modelname
+with_modeldescription
+with_modelurl
 enable_tivo
 enable_netgear
 enable_readynas
@@ -1399,6 +1404,14 @@ Optional Packages:
   --with-os-name=NAME     OS Name
   --with-os-version=VERS  OS Version
   --with-os-url=URL       OS URL
+  --with-manufacturer=NAME
+                          Manufacturer
+  --with-manufacturer-url=NAME
+                          Manufacturer URL
+  --with-modelname=NAME   Model name
+  --with-modeldescription=NAME
+                          Model description
+  --with-modelurl=NAME    Model URL
 
 Some influential environment variables:
   CC          C compiler command
@@ -7706,39 +7719,6 @@ $as_echo "no" >&6; }
 fi
 
 
-# Default string definitions
-
-cat >>confdefs.h <<_ACEOF
-#define OS_URL "http://sourceforge.net/projects/minidlna/"
-_ACEOF
-
-
-cat >>confdefs.h <<_ACEOF
-#define ROOTDEV_MANUFACTURER "Justin Maggard"
-_ACEOF
-
-
-cat >>confdefs.h <<_ACEOF
-#define ROOTDEV_MANUFACTURERURL "http://www.netgear.com/"
-_ACEOF
-
-
-cat >>confdefs.h <<_ACEOF
-#define ROOTDEV_MODELNAME "Windows Media Connect compatible (MiniDLNA)"
-_ACEOF
-
-
-cat >>confdefs.h <<_ACEOF
-#define ROOTDEV_MODELDESCRIPTION "MiniDLNA on " OS_NAME
-_ACEOF
-
-
-cat >>confdefs.h <<_ACEOF
-#define ROOTDEV_MODELURL OS_URL
-_ACEOF
-
-
-
 ################################################################################################################
 # Checks for typedefs, structures, and compiler characteristics.
 { $as_echo "$as_me:${as_lineno-$LINENO}: checking for inline" >&5
@@ -9848,6 +9828,75 @@ cat >>confdefs.h <<_ACEOF
 #define OS_URL "${with_osurl}"
 _ACEOF
 
+
+
+# Check whether --with-manufacturer was given.
+if test "${with_manufacturer+set}" = set; then :
+  withval=$with_manufacturer; with_manufacturer="$withval"
+else
+  with_manufacturer="Justin Maggard"
+fi
+
+
+cat >>confdefs.h <<_ACEOF
+#define ROOTDEV_MANUFACTURER "${with_manufacturer}"
+_ACEOF
+
+
+
+# Check whether --with-manufacturer-url was given.
+if test "${with_manufacturer_url+set}" = set; then :
+  withval=$with_manufacturer_url; with_manufacturer_url="$withval"
+else
+  with_manufacturer_url="http://www.netgear.com/"
+fi
+
+
+cat >>confdefs.h <<_ACEOF
+#define ROOTDEV_MANUFACTURERURL "${with_manufacturer_url}"
+_ACEOF
+
+
+
+# Check whether --with-modelname was given.
+if test "${with_modelname+set}" = set; then :
+  withval=$with_modelname; with_modelname="$withval"
+else
+  with_modelname="Windows Media Connect compatible (MiniDLNA)"
+fi
+
+
+cat >>confdefs.h <<_ACEOF
+#define ROOTDEV_MODELNAME "${with_modelname}"
+_ACEOF
+
+
+
+# Check whether --with-modeldescription was given.
+if test "${with_modeldescription+set}" = set; then :
+  withval=$with_modeldescription; with_modeldescription="$withval"
+else
+  with_modeldescription="MiniDLNA on "${with_osname}
+fi
+
+
+cat >>confdefs.h <<_ACEOF
+#define ROOTDEV_MODELDESCRIPTION "${with_modeldescription}"
+_ACEOF
+
+
+
+# Check whether --with-modelurl was given.
+if test "${with_modelurl+set}" = set; then :
+  withval=$with_modelurl; with_modelurl="$withval"
+else
+  with_modelurl=${with_osurl}
+fi
+
+
+cat >>confdefs.h <<_ACEOF
+#define ROOTDEV_MODELURL "${with_modelurl}"
+_ACEOF
 
 
 { $as_echo "$as_me:${as_lineno-$LINENO}: checking whether to enable TiVo support" >&5

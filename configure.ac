@@ -38,15 +38,6 @@ AC_PROG_INSTALL
 AC_PROG_LN_S
 AC_PROG_MAKE_SET
 
-# Default string definitions
-AC_DEFINE_UNQUOTED([OS_URL],"http://sourceforge.net/projects/minidlna/",[OS URL])
-AC_DEFINE_UNQUOTED([ROOTDEV_MANUFACTURER],"Justin Maggard", [Manufacturer])
-AC_DEFINE_UNQUOTED([ROOTDEV_MANUFACTURERURL],"http://www.netgear.com/", [Manufacturer URL])
-AC_DEFINE_UNQUOTED([ROOTDEV_MODELNAME],"Windows Media Connect compatible (MiniDLNA)", [Model name])
-AC_DEFINE_UNQUOTED([ROOTDEV_MODELDESCRIPTION],"MiniDLNA on " OS_NAME, [Model description])
-AC_DEFINE_UNQUOTED([ROOTDEV_MODELURL],OS_URL,[Model URL])
-
-
 ################################################################################################################
 # Checks for typedefs, structures, and compiler characteristics.
 AC_C_INLINE
@@ -491,6 +482,30 @@ AC_ARG_WITH(os-url,
 	[with_osurl="$withval"],[with_osurl="http://www.netgear.com"])
 AC_DEFINE_UNQUOTED([OS_URL],"${with_osurl}",[OS URL])
 
+AC_ARG_WITH(manufacturer,
+	AS_HELP_STRING([--with-manufacturer=NAME],[Manufacturer]),
+	[with_manufacturer="$withval"],[with_manufacturer="Justin Maggard"])
+AC_DEFINE_UNQUOTED([ROOTDEV_MANUFACTURER],"${with_manufacturer}",[Manufacturer])
+
+AC_ARG_WITH(manufacturer-url,
+	AS_HELP_STRING([--with-manufacturer-url=NAME],[Manufacturer URL]),
+	[with_manufacturer_url="$withval"],[with_manufacturer_url="http://www.netgear.com/"])
+AC_DEFINE_UNQUOTED([ROOTDEV_MANUFACTURERURL],"${with_manufacturer_url}",[Manufacturer URL])
+
+AC_ARG_WITH(modelname,
+	AS_HELP_STRING([--with-modelname=NAME],[Model name]),
+	[with_modelname="$withval"],[with_modelname="Windows Media Connect compatible (MiniDLNA)"])
+AC_DEFINE_UNQUOTED([ROOTDEV_MODELNAME],"${with_modelname}",[Model name])
+
+AC_ARG_WITH(modeldescription,
+	AS_HELP_STRING([--with-modeldescription=NAME],[Model description]),
+	[with_modeldescription="$withval"],[with_modeldescription="MiniDLNA on "${with_osname}])
+AC_DEFINE_UNQUOTED([ROOTDEV_MODELDESCRIPTION],"${with_modeldescription}",[Model description])
+
+AC_ARG_WITH(modelurl,
+	AS_HELP_STRING([--with-modelurl=NAME],[Model URL]),
+	[with_modelurl="$withval"],[with_modelurl=${with_osurl}])
+AC_DEFINE_UNQUOTED([ROOTDEV_MODELURL],"${with_modelurl}",[Model URL])
 
 AC_MSG_CHECKING([whether to enable TiVo support])
 AC_ARG_ENABLE(tivo,
