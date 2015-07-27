@@ -166,7 +166,7 @@ inotify_create_watches(int fd)
 	sql_get_table(db, "SELECT PATH from DETAILS where MIME is NULL and PATH is not NULL", &result, &rows, NULL);
 	for( i=1; i <= rows; i++ )
 	{
-		DPRINTF(E_INFO, L_INOTIFY, "Add watch to %s\n", result[i]);
+		DPRINTF(E_DEBUG, L_INOTIFY, "Add watch to %s\n", result[i]);
 		add_watch(fd, result[i]);
 		num_watches++;
 	}
