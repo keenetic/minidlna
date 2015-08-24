@@ -575,6 +575,8 @@ init(	int argc, char * * argv,
 						MAX_LAN_ADDR, word);
 					break;
 				}
+				while (isspace(*word))
+					word++;
 				runtime_vars.ifaces[ifaces++] = word;
 			}
 			runtime_vars.ifaces[ifaces] = NULL;
@@ -742,7 +744,8 @@ init(	int argc, char * * argv,
 				/* Symbolic username given, not UID. */
 				struct passwd *entry = getpwnam(ary_options[i].value);
 				if (!entry)
-					DPRINTF(E_FATAL, L_GENERAL, "Bad user '%s'.\n", argv[i]);
+					DPRINTF(E_FATAL, L_GENERAL, "Bad user '%s'.\n",
+						ary_options[i].value);
 				uid = entry->pw_uid;
 			}
 			break;
