@@ -397,6 +397,7 @@ rescan:
 			sqlite3_close(db);
 			log_close();
 			freeoptions();
+			free(children);
 			exit(EXIT_SUCCESS);
 		}
 		else if (*scanner_pid < 0)
@@ -1458,6 +1459,8 @@ shutdown:
 	if (sbeacon >= 0)
 		close(sbeacon);
 #endif
+	if (smonitor >= 0)
+		close(smonitor);
 	
 	for (i = 0; i < n_lan_addr; i++)
 	{
