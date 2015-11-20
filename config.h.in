@@ -354,9 +354,6 @@
 /* Define to 1 if you want to enable generic NETGEAR device support */
 #undef NETGEAR
 
-/* Define to 1 if your C compiler doesn't accept -c and -o together. */
-#undef NO_MINUS_C_MINUS_O
-
 /* OS Name */
 #undef OS_NAME
 
