@@ -56,7 +56,7 @@
 #include "config.h"
 
 /* server: HTTP header returned in all HTTP responses : */
-#define MINIDLNA_SERVER_STRING	OS_VERSION " DLNADOC/1.50 UPnP/1.0 " SERVER_NAME "/" MINIDLNA_VERSION
+#define MINIDLNA_SERVER_STRING	OS_NAME "/" OS_VERSION " DLNADOC/1.50 UPnP/1.0 " SERVER_NAME "/" MINIDLNA_VERSION
 
 /*
  states :
