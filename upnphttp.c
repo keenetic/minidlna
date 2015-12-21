@@ -1415,7 +1415,7 @@ SendResp_albumArt(struct upnphttp * h, char * object)
 		Send404(h);
 		return;
 	}
-	DPRINTF(E_INFO, L_HTTP, "Serving album art ID: %lld [%s]\n", id, path);
+	DPRINTF(E_DEBUG, L_HTTP, "Serving album art ID: %lld [%s]\n", id, path);
 
 	fd = open(path, O_RDONLY);
 	if( fd < 0 ) {
@@ -1463,7 +1463,7 @@ SendResp_caption(struct upnphttp * h, char * object)
 		Send404(h);
 		return;
 	}
-	DPRINTF(E_INFO, L_HTTP, "Serving caption ID: %lld [%s]\n", id, path);
+	DPRINTF(E_DEBUG, L_HTTP, "Serving caption ID: %lld [%s]\n", id, path);
 
 	fd = open(path, O_RDONLY);
 	if( fd < 0 ) {
@@ -1515,7 +1515,7 @@ SendResp_thumbnail(struct upnphttp * h, char * object)
 		Send404(h);
 		return;
 	}
-	DPRINTF(E_INFO, L_HTTP, "Serving thumbnail for ObjectId: %lld [%s]\n", id, path);
+	DPRINTF(E_DEBUG, L_HTTP, "Serving thumbnail for ObjectId: %lld [%s]\n", id, path);
 
 	if( access(path, F_OK) != 0 )
 	{
@@ -1649,7 +1649,7 @@ SendResp_resizedimg(struct upnphttp * h, char * object)
 		goto resized_error;
 	}
 
-	DPRINTF(E_INFO, L_HTTP, "Serving resized image for ObjectId: %lld [%s]\n", id, file_path);
+	DPRINTF(E_DEBUG, L_HTTP, "Serving resized image for ObjectId: %lld [%s]\n", id, file_path);
 	if( rotate )
 		DPRINTF(E_DEBUG, L_HTTP, "Rotating image %d degrees\n", rotate);
 	switch( rotate )
@@ -1885,7 +1885,7 @@ SendResp_dlnafile(struct upnphttp *h, char *object)
 	}
 #endif
 
-	DPRINTF(E_INFO, L_HTTP, "Serving DetailID: %lld [%s]\n", (long long)id, last_file.path);
+	DPRINTF(E_DEBUG, L_HTTP, "Serving DetailID: %lld [%s]\n", (long long)id, last_file.path);
 
 	if( h->reqflags & FLAG_XFERSTREAMING )
 	{
