@@ -1440,10 +1440,6 @@ shutdown:
 	/* kill the scanner */
 	stop_scanning(&scanner_pid); //TODO SIGKILL
 
-	/* kill other child processes */
-	process_reap_children();
-	free(children);
-
 	/* close out open sockets */
 	while (upnphttphead.lh_first != NULL)
 	{
@@ -1469,6 +1465,10 @@ shutdown:
 	}
 
 	stop_inotify_thread(&inotify_thread);
+
+	/* kill other child processes */
+	process_reap_children();
+	free(children);
 
 	sql_exec(db, "UPDATE SETTINGS set VALUE = '%u' where KEY = 'UPDATE_ID'", updateID);
 	sqlite3_close(db);

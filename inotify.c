@@ -676,6 +676,10 @@ static void *start_inotify(void)
 	int length, i = 0;
 	char * esc_name = NULL;
 	struct stat st;
+	sigset_t set;
+
+	sigfillset(&set);
+	pthread_sigmask(SIG_BLOCK, &set, NULL);
         
 	pollfds[0].fd = inotify_init();
 	pollfds[0].events = POLLIN;
