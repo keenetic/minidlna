@@ -121,12 +121,16 @@ lav_open(AVFormatContext **ctx, const char *filename)
 	int ret;
 #if LIBAVFORMAT_VERSION_INT >= ((53<<16)+(17<<8)+0)
 	ret = avformat_open_input(ctx, filename, NULL, NULL);
-	if (ret == 0)
+	if (ret == 0) {
+		(*ctx)->max_analyze_duration = 1;
 		avformat_find_stream_info(*ctx, NULL);
+	}
 #else
 	ret = av_open_input_file(ctx, filename, NULL, 0, NULL);
-	if (ret == 0)
+	if (ret == 0) {
+		(*ctx)->max_analyze_duration = 1;
 		av_find_stream_info(*ctx);
+	}
 #endif
 	return ret;
 }

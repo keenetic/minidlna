@@ -7,7 +7,7 @@
 
 #include <libavformat/avformat.h>
 #include <libavcodec/avcodec.h>
-
+#include "libav.h"
 
 #define NDM_CONV_ICONV_COMPAT
 #include <ndm/conv.h>
@@ -88,8 +88,7 @@ static int _get_mp3tags(char *file, struct song_metadata *psong) {
 
 static int _get_lavffileinfo(char *filename, struct song_metadata *psong) {
 	AVFormatContext *ic;
-	AVMetadataTag *tag;
-	AVMetadata *m;
+	AVDictionaryEntry *tag;
 	int err;
 	iconv_t cnv;
 	char cutf8[1024];
@@ -98,21 +97,18 @@ static int _get_lavffileinfo(char *filename, struct song_metadata *psong) {
 	char *out;
 
 	av_register_all();
-	//TODO: lav_open
-	if( (err = av_open_input_file(&ic, filename, NULL, 0, NULL)) < 0 )
-		return err;
 
-	ic->max_analyze_duration = 1;
-	if( (err = av_find_stream_info(ic)) < 0 ) {
-		av_close_input_file(ic);
+	if( (err = lav_open(&ic, filename)) < 0 ) {
+		char buf[128];
+		av_strerror(err, buf, sizeof(buf));
+		DPRINTF(E_WARN, L_METADATA, "Opening av %s failed! [%s]\n", filename, buf);
 		return err;
 	}
 
 	cnv = iconv_open("utf-8", "cp1251");
 	tag = NULL;
-	m = ic->metadata;
-	if( m ) {
-		while( (tag = av_metadata_get(m, "", tag, AV_METADATA_IGNORE_SUFFIX)) ) {
+	if( ic->metadata ) {
+		while( (tag = av_dict_get(ic->metadata, "", tag, AV_DICT_IGNORE_SUFFIX)) ) {
 			if( cnv != (iconv_t)-1 && !is_utf8(tag->value) ) {
 				in = tag->value;
 				out = cutf8;
@@ -142,7 +138,7 @@ static int _get_lavffileinfo(char *filename, struct song_metadata *psong) {
 	if( !psong->bitrate && psong->song_length >= 8 )
 		psong->bitrate = (((uint64_t)(psong->file_size) * 1000) / (psong->song_length / 8));
 
-	av_close_input_file(ic);
+	lav_close(ic);
 	if( cnv != (iconv_t)-1 )
 		iconv_close(cnv);
 	return 0;
