@@ -87,7 +87,7 @@ static int _get_mp3tags(char *file, struct song_metadata *psong) {
 }
 
 static int _get_lavffileinfo(char *filename, struct song_metadata *psong) {
-	AVFormatContext *ic;
+	AVFormatContext *ic = NULL;
 	AVDictionaryEntry *tag;
 	int err;
 	iconv_t cnv;
