@@ -103,12 +103,12 @@
 #define AV_CODEC_ID_WMV3 CODEC_ID_WMV3
 #endif
 
-#if LIBAVUTIL_VERSION_INT < ((50<<16)+(13<<8)+0)
+#if LIBAVUTIL_VERSION_INT < AV_VERSION_INT(50, 13, 0)
 #define av_strerror(x, y, z) snprintf(y, z, "%d", x)
 #endif
 
-#if LIBAVFORMAT_VERSION_INT >= ((52<<16)+(31<<8)+0)
-# if LIBAVUTIL_VERSION_INT < ((51<<16)+(5<<8)+0) && !defined(FF_API_OLD_METADATA2)
+#if LIBAVFORMAT_VERSION_INT >= AV_VERSION_INT(52, 31, 0)
+# if LIBAVUTIL_VERSION_INT < AV_VERSION_INT(51, 5, 0) && !defined(FF_API_OLD_METADATA2)
 #define AV_DICT_IGNORE_SUFFIX AV_METADATA_IGNORE_SUFFIX
 #define av_dict_get av_metadata_get
 typedef AVMetadataTag AVDictionaryEntry;
@@ -119,10 +119,14 @@ static inline int
 lav_open(AVFormatContext **ctx, const char *filename)
 {
 	int ret;
-#if LIBAVFORMAT_VERSION_INT >= ((53<<16)+(17<<8)+0)
+#if LIBAVFORMAT_VERSION_INT >= AV_VERSION_INT(53, 17, 0)
 	ret = avformat_open_input(ctx, filename, NULL, NULL);
 	if (ret == 0) {
+#if  LIBAVFORMAT_VERSION_INT >= AV_VERSION_INT(55, 43, 100)
+		(*ctx)->max_analyze_duration2 = 1;
+#else
 		(*ctx)->max_analyze_duration = 1;
+#endif
 		avformat_find_stream_info(*ctx, NULL);
 	}
 #else
@@ -138,7 +142,7 @@ lav_open(AVFormatContext **ctx, const char *filename)
 static inline void
 lav_close(AVFormatContext *ctx)
 {
-#if LIBAVFORMAT_VERSION_INT >= ((53<<16)+(17<<8)+0)
+#if LIBAVFORMAT_VERSION_INT >= AV_VERSION_INT(53, 17, 0)
 	avformat_close_input(&ctx);
 #else
 	av_close_input_file(ctx);
@@ -171,7 +175,7 @@ lav_get_interlaced(AVCodecContext *vc, AVStream *s)
 static inline int
 lav_is_thumbnail_stream(AVStream *s, uint8_t **data, int *size)
 {
-#if LIBAVFORMAT_VERSION_INT >= ((54<<16)+(6<<8))
+#if LIBAVFORMAT_VERSION_INT >= AV_VERSION_INT(54, 6, 0)
 	if (s->disposition & AV_DISPOSITION_ATTACHED_PIC &&
 	    s->codec->codec_id == AV_CODEC_ID_MJPEG)
 	{
