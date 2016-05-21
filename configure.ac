@@ -407,24 +407,29 @@ done
 test x"$ac_cv_lib_sqlite3_sqlite3_open" = x"yes" || AC_MSG_ERROR([Could not find libsqlite3])
 AC_SUBST(LIBSQLITE3_LIBS)
 
+AC_CHECK_LIB(avutil ,[av_rescale_q], [LIBAVUTIL_LIBS="-lavutil"], [AC_MSG_ERROR([Could not find libavutil - part of ffmpeg])])
+AC_SUBST(LIBAVUTIL_LIBS)
+
 LDFLAGS_SAVE="$LDFLAGS"
 for dir in "" /usr/local $SEARCH_DIR; do
+	LDFLAGS="$LDFLAGS -lavformat -lavutil"
     if test -n "$dir"; then
         LDFLAGS="$LDFLAGS -L$dir/lib"
     fi
-    AC_CHECK_LIB([avformat], [av_open_input_file], [LIBAVFORMAT_LIBS="-lavformat"],
-		 [AC_CHECK_LIB([avformat], [avformat_open_input], [LIBAVFORMAT_LIBS="-lavformat"],
-		  [unset ac_cv_lib_avformat_av_open_input_file; unset ac_cv_lib_avformat_avformat_open_input; LDFLAGS="$LDFLAGS_SAVE"; continue])])
-    break
+    AC_CHECK_LIB([avformat], [av_open_input_file],
+                 [LIBAVFORMAT_LIBS="-lavformat -lavcodec -lavutil -lz"; break],
+                 [],
+                 [-lavcodec -lavutil -lz])
+    AC_CHECK_LIB([avformat], [avformat_open_input],
+                 [LIBAVFORMAT_LIBS="-lavformat -lavcodec -lavutil -lz"; break],
+                 [LDFLAGS="$LDFLAGS_SAVE"; continue],
+                 [-lavcodec -lavutil -lz])
 done
 if test x"$ac_cv_lib_avformat_av_open_input_file" != x"yes" &&
    test x"$ac_cv_lib_avformat_avformat_open_input" != x"yes"; then
    AC_MSG_ERROR([Could not find libavformat - part of ffmpeg])
 fi
 AC_SUBST(LIBAVFORMAT_LIBS)
-
-AC_CHECK_LIB(avutil ,[av_rescale_q], [LIBAVUTIL_LIBS="-lavutil"], [AC_MSG_ERROR([Could not find libavutil - part of ffmpeg])])
-AC_SUBST(LIBAVUTIL_LIBS)
 
 AC_CHECK_LIB(pthread, pthread_create)
 
