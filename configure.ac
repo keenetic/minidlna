@@ -383,10 +383,11 @@ AC_SUBST(LIBJPEG_LIBS)
 
 LDFLAGS_SAVE="$LDFLAGS"
 for dir in "" /usr/local $SEARCH_DIR; do
+    LDFLAGS="$LDFLAGS -lm"
     if test -n "$dir"; then
         LDFLAGS="$LDFLAGS -L$dir/lib"
     fi
-    AC_CHECK_LIB([exif], [exif_data_new_from_file], [LIBEXIF_LIBS="-lexif"], [unset ac_cv_lib_exif_exif_data_new_from_file; LDFLAGS="$LDFLAGS_SAVE"; continue])
+    AC_CHECK_LIB([exif], [exif_data_new_from_file], [LIBEXIF_LIBS="-lm -lexif"], [unset ac_cv_lib_exif_exif_data_new_from_file; LDFLAGS="$LDFLAGS_SAVE"; continue])
     break
 done
 test x"$ac_cv_lib_jpeg_jpeg_set_defaults" = x"yes" || AC_MSG_ERROR([Could not find libexif])
