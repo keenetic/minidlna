@@ -501,7 +501,7 @@ init(	int argc, char * * argv,
 	struct sigaction sa;
 	const char * presurl = NULL;
 	const char * optionsfile = "/etc/minidlna.conf";
-	char mac_str[13];
+
 	char *string, *word;
 	char *path;
 	char buf[PATH_MAX];
@@ -513,6 +513,8 @@ init(	int argc, char * * argv,
 	uid_t uid = 0;
 	*updatefile = NULL;
 	*statusfile = NULL;
+	int uuid_set = 0;
+	int friendly_name_set = 0;
 
 	/* first check if "-f" option is used */
 	for (i=2; i<argc; i++)
@@ -524,17 +526,6 @@ init(	int argc, char * * argv,
 			break;
 		}
 	}
-
-	/* set up uuid based on mac address */
-	if (getsyshwaddr(mac_str, sizeof(mac_str)) < 0)
-	{
-		DPRINTF(E_OFF, L_GENERAL, "No MAC address found.  Falling back to generic UUID.\n");
-		strcpy(mac_str, "554e4b4e4f57");
-	}
-	strcpy(uuidvalue+5, "4d696e69-444c-164e-9d41-");
-	strncat(uuidvalue, mac_str, 12);
-
-	getfriendlyname(friendly_name, FRIENDLYNAME_MAX_LEN);
 	
 	runtime_vars.port = 8200;
 	runtime_vars.notify_interval = 895;	/* seconds between SSDP announces */
@@ -590,6 +581,7 @@ init(	int argc, char * * argv,
 			break;
 		case UPNPFRIENDLYNAME:
 			strncpyt(friendly_name, ary_options[i].value, FRIENDLYNAME_MAX_LEN);
+			friendly_name_set++;
 			break;
 		case UPNPMEDIADIR:
 			types = ALL_MEDIA;
@@ -725,6 +717,7 @@ init(	int argc, char * * argv,
 			break;
 		case UPNPUUID:
 			strcpy(uuidvalue+5, ary_options[i].value);
+			uuid_set++;
 			break;
 		case USER_ACCOUNT:
 			uid = strtoul(ary_options[i].value, &string, 0);
@@ -896,6 +889,24 @@ init(	int argc, char * * argv,
 			DPRINTF(E_ERROR, L_GENERAL, "Unknown option: %s\n", argv[i]);
 			runtime_vars.port = -1; // triggers help display
 		}
+	}
+
+	if (!uuid_set)
+	{
+		char mac_str[13];
+		/* set up uuid based on mac address */
+		if (getsyshwaddr(mac_str, sizeof(mac_str)) < 0)
+		{
+			DPRINTF(E_OFF, L_GENERAL, "No MAC address found.  Falling back to generic UUID.\n");
+			strcpy(mac_str, "554e4b4e4f57");
+		}
+		strcpy(uuidvalue+5, "4d696e69-444c-164e-9d41-");
+		strncat(uuidvalue, mac_str, 12);
+	}
+
+	if (!friendly_name_set)
+	{
+		getfriendlyname(friendly_name, FRIENDLYNAME_MAX_LEN);
 	}
 
 	if (runtime_vars.port <= 0)

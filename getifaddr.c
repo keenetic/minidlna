@@ -235,6 +235,10 @@ getsyshwaddr(char *buf, int len)
 
 	for (if_idx = ifaces; if_idx->if_index; if_idx++)
 	{
+		if (runtime_vars.ifaces[0] &&
+		    strcmp(if_idx->if_name, runtime_vars.ifaces[0]))
+			continue;
+
 		strncpyt(ifr.ifr_name, if_idx->if_name, IFNAMSIZ);
 		if (ioctl(fd, SIOCGIFFLAGS, &ifr) < 0)
 			continue;

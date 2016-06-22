@@ -21,3 +21,5 @@ linux/minidlna.init.d.script
 stamp-*
 config.guess
 config.sub
+*~
+autom4te.cache
