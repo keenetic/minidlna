@@ -743,7 +743,7 @@ ScanDirectory(const char *dir, const char *parent, media_types dir_types, const 
 	static long long unsigned int fileno = 0;
 	enum file_types type;
 
-	DPRINTF(parent?E_INFO:E_WARN, L_SCANNER, _("Scanning %s\n"), dir);
+	DPRINTF(E_INFO, L_SCANNER, _("Scanning %s\n"), dir);
 	switch( dir_types )
 	{
 		case ALL_MEDIA:
@@ -848,7 +848,7 @@ ScanDirectory(const char *dir, const char *parent, media_types dir_types, const 
 	free(full_path);
 	if( !parent )
 	{
-		DPRINTF(E_WARN, L_SCANNER, _("Scanning %s finished (%llu files)!\n"), dir, fileno);
+		DPRINTF(E_INFO, L_SCANNER, _("Scanning %s finished (%llu files)!\n"), dir, fileno);
 	}
 }
 
