@@ -162,7 +162,7 @@ static void
 sigusr1(int sig)
 {
 	signal(sig, sigusr1);
-	DPRINTF(E_WARN, L_GENERAL, "received signal %d, clear cache\n", sig);
+	DPRINTF(E_INFO, L_GENERAL, "Received signal %d, clear cache\n", sig);
 
 	memset(&clients, '\0', sizeof(clients));
 }
@@ -171,7 +171,7 @@ static void
 sighup(int sig)
 {
 	signal(sig, sighup);
-	DPRINTF(E_WARN, L_GENERAL, "received signal %d, update configuration\n", sig);
+	DPRINTF(E_INFO, L_GENERAL, "Received signal %d, updating configuration...\n", sig);
 
 	update_configuration = 1;
 }
@@ -344,11 +344,11 @@ check_db(sqlite3 *db, int new_db, pid_t *scanner_pid, const char *statusfile, in
 	{
 rescan:
 		if (ret < 0)
-			DPRINTF(E_WARN, L_GENERAL, "Creating new database at %s/%s\n", db_path, DLNA_DB_FILE_NAME);
+			DPRINTF(E_INFO, L_GENERAL, "Creating new database at %s/%s\n", db_path, DLNA_DB_FILE_NAME);
 		else if (ret == 1)
-			DPRINTF(E_WARN, L_GENERAL, "New media_dir detected; rescanning...\n");
+			DPRINTF(E_INFO, L_GENERAL, "New media_dir detected; rescanning...\n");
 		else if (ret == 2)
-			DPRINTF(E_WARN, L_GENERAL, "Removed media_dir detected; rescanning...\n");
+			DPRINTF(E_INFO, L_GENERAL, "Removed media_dir detected; rescanning...\n");
 		else
 			DPRINTF(E_WARN, L_GENERAL, "Database version mismatch (%d=>%d); need to recreate...\n",
 				ret, DB_VERSION);
@@ -1152,7 +1152,7 @@ main(int argc, char **argv)
 		return 1;
 	init_nls();
 
-	DPRINTF(E_WARN, L_GENERAL, "Starting " SERVER_NAME " version " MINIDLNA_VERSION ".\n");
+	DPRINTF(E_INFO, L_GENERAL, "Starting " SERVER_NAME " version " MINIDLNA_VERSION ".\n");
 	if (sqlite3_libversion_number() < 3005001)
 	{
 		DPRINTF(E_WARN, L_GENERAL, "SQLite library is old.  Please use version 3.5.1 or newer.\n");
@@ -1193,7 +1193,7 @@ main(int argc, char **argv)
 	shttpl = OpenAndConfHTTPSocket(runtime_vars.port);
 	if (shttpl < 0)
 		DPRINTF(E_FATAL, L_GENERAL, "Failed to open socket for HTTP. EXITING\n");
-	DPRINTF(E_WARN, L_GENERAL, "HTTP listening on port %d\n", runtime_vars.port);
+	DPRINTF(E_INFO, L_GENERAL, "HTTP listening on port %d\n", runtime_vars.port);
 
 #ifdef TIVO_SUPPORT
 	if (GETFLAG(TIVO_MASK))

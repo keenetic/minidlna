@@ -122,7 +122,7 @@ fill_playlists(void)
 	int64_t plID, detailID;
 	char sql_buf[] = "SELECT ID, NAME, PATH from PLAYLISTS where ITEMS > FOUND";
 
-	DPRINTF(E_WARN, L_SCANNER, "Parsing playlists...\n");
+	DPRINTF(E_INFO, L_SCANNER, "Parsing playlists...\n");
 
 	if( sql_get_table(db, sql_buf, &result, &rows, NULL) != SQLITE_OK ) 
 		return -1;
@@ -256,7 +256,7 @@ found:
 	}
 done:
 	sqlite3_free_table(result);
-	DPRINTF(E_WARN, L_SCANNER, "Finished parsing playlists.\n");
+	DPRINTF(E_INFO, L_SCANNER, "Finished parsing playlists.\n");
 
 	return 0;
 }
