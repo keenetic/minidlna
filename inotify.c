@@ -64,7 +64,7 @@ struct watch
 	struct watch *next;
 };
 
-static struct watch *watches;
+static struct watch *watches = NULL;
 static struct watch *lastwatch = NULL;
 static time_t next_pl_fill = 0;
 static volatile int stop_notifier;
@@ -787,6 +787,8 @@ static void *start_inotify(void *unused)
 		}
 	}
 	inotify_remove_watches(pollfds[0].fd);
+	watches = NULL;
+	lastwatch = NULL;
 quitting:
 	close(pollfds[0].fd);
 
