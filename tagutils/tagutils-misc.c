@@ -67,6 +67,7 @@ do_iconv(const char* to_ces, const char* from_ces,
 	return ret;
 }
 #else // HAVE_ICONV
+#if 0
 static iconv_result
 do_iconv(const char* to_ces, const char* from_ces,
 	 char *inbuf,  size_t inbytesleft,
@@ -74,6 +75,7 @@ do_iconv(const char* to_ces, const char* from_ces,
 {
 	return ICONV_FATAL;
 }
+#endif
 #endif // HAVE_ICONV
 
 #define N_LANG_ALT 8
@@ -181,6 +183,7 @@ _get_utf8_text(const id3_ucs4_t* native_text)
 }
 #endif
 
+#if 0
 static void
 vc_scan(struct song_metadata *psong, const char *comment, const size_t length)
 {
@@ -292,3 +295,4 @@ vc_scan(struct song_metadata *psong, const char *comment, const size_t length)
 		psong->musicbrainz_albumartistid = strdup(strbuf + 26);
 	}
 }
+#endif
