@@ -71,7 +71,7 @@ static volatile int stop_notifier;
 
 static int inotify_remove_file(const char * path);
 
-char *get_path_from_wd(int wd)
+static char *get_path_from_wd(int wd)
 {
 	struct watch *w = watches;
 
@@ -85,7 +85,7 @@ char *get_path_from_wd(int wd)
 	return NULL;
 }
 
-int
+static int
 add_watch(int fd, const char * path)
 {
 	struct watch *nw;
@@ -122,7 +122,7 @@ add_watch(int fd, const char * path)
 	return wd;
 }
 
-int
+static int
 remove_watch(int fd, const char * path)
 {
 	struct watch *w;
@@ -136,7 +136,7 @@ remove_watch(int fd, const char * path)
 	return 1;
 }
 
-unsigned int
+static unsigned int
 next_highest(unsigned int num)
 {
 	num |= num >> 1;
@@ -147,7 +147,7 @@ next_highest(unsigned int num)
 	return(++num);
 }
 
-int
+static int
 inotify_create_watches(int fd)
 {
 	FILE * max_watches;
@@ -216,7 +216,7 @@ inotify_create_watches(int fd)
 	return rows;
 }
 
-int 
+static int
 inotify_remove_watches(int fd)
 {
 	struct watch *w = watches;
@@ -236,7 +236,7 @@ inotify_remove_watches(int fd)
 	return rm_watches;
 }
 
-int add_dir_watch(int fd, char * path, char * filename)
+static int add_dir_watch(int fd, char * path, char * filename)
 {
 	DIR *ds;
 	struct dirent *e;
@@ -299,7 +299,7 @@ int add_dir_watch(int fd, char * path, char * filename)
 	return(i);
 }
 
-int
+static int
 inotify_insert_file(char * name, const char * path)
 {
 	int len;
@@ -454,7 +454,7 @@ inotify_insert_file(char * name, const char * path)
 	return depth;
 }
 
-int
+static int
 inotify_insert_directory(int fd, char *name, const char * path)
 {
 	DIR * ds;
@@ -633,7 +633,7 @@ static int inotify_remove_file(const char * path)
 	return 0;
 }
 
-int
+static int
 inotify_remove_directory(int fd, const char * path)
 {
 	char * sql;
@@ -823,7 +823,6 @@ void stop_inotify_thread(pthread_t *inotify_thread)
 	} else {
 		DPRINTF(E_ERROR, L_INOTIFY, "Notifier thread already stopped.\n");
 	}
-
 }
 
 #endif
