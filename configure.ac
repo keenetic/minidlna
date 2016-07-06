@@ -432,6 +432,8 @@ fi
 AC_SUBST(LIBAVFORMAT_LIBS)
 
 AC_CHECK_LIB(pthread, pthread_create)
+CFLAGS="$CFLAGS -pthread"
+LDFLAGS="$LDFLAGS -lpthread"
 
 ################################################################################################################
 ### Header checks
