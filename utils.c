@@ -558,9 +558,18 @@ int recursive_remove(
 
 	if(stat(name, &s) != 0)
 	{
-		DPRINTF(E_DEBUG, L_GENERAL,
-			"Unable to get attributes for %s: %s.\n",
-			name, strerror(errno));
+		if (errno == ENOENT)
+		{
+			/* an entry does not exist already */
+
+			ret = 0;
+		}
+		else
+		{
+			DPRINTF(E_DEBUG, L_GENERAL,
+				"Unable to get attributes for %s: %s.\n",
+				name, strerror(errno));
+		}
 	}
 	else
 	{
