@@ -223,6 +223,7 @@ extern char friendly_name[];
 extern char db_path[];
 extern char log_path[];
 extern struct media_dir_s *media_dirs;
+extern size_t media_dirs_count;
 extern struct album_art_name_s *album_art_names;
 extern short int scanning;
 extern volatile short int quitting;

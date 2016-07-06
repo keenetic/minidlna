@@ -278,17 +278,24 @@ open_db(sqlite3 **sq3)
 	if (access(path, F_OK) != 0)
 	{
 		new_db = 1;
+#if 0
+		/* do not create a directory, it should already exists */
 		make_dir(db_path, S_ISVTX|S_IRWXU|S_IRWXG|S_IRWXO);
+#endif
 	}
 	if (sqlite3_open(path, &db) != SQLITE_OK)
 		DPRINTF(E_FATAL, L_GENERAL, "ERROR: Failed to open sqlite database!  Exiting...\n");
 	if (sq3)
 		*sq3 = db;
-	sqlite3_busy_timeout(db, 5000);
-	sql_exec(db, "pragma page_size = 4096");
-	sql_exec(db, "pragma journal_mode = OFF");
-	sql_exec(db, "pragma synchronous = OFF;");
-	sql_exec(db, "pragma default_cache_size = 8192;");
+
+	if (db)
+	{
+		sqlite3_busy_timeout(db, 5000);
+		sql_exec(db, "pragma page_size = 4096");
+		sql_exec(db, "pragma journal_mode = OFF");
+		sql_exec(db, "pragma synchronous = OFF;");
+		sql_exec(db, "pragma default_cache_size = 8192;");
+	}
 
 	return new_db;
 }
@@ -360,8 +367,10 @@ rescan:
 		}
 
 		open_db(&db);
-		if (CreateDatabase() != 0)
+		if (!db || CreateDatabase() != 0)
+		{
 			DPRINTF(E_FATAL, L_GENERAL, "ERROR: Failed to create sqlite database!  Exiting...\n");
+		}
 #if USE_FORK
 		scanning = 1;
 		sqlite3_close(db);
@@ -480,6 +489,136 @@ static void init_nls(void)
 #endif
 }
 
+static void media_db_open(pid_t *scanner_pid, const char *statusfile)
+{
+	int ret = open_db(NULL);
+	if (ret == 0)
+	{
+		updateID = sql_get_int_field(db, "SELECT VALUE from SETTINGS where KEY = 'UPDATE_ID'");
+		if (updateID == -1)
+			ret = -1;
+	}
+	check_db(db, ret, scanner_pid, statusfile, 0);
+}
+
+static void media_db_close()
+{
+	if (db)
+	{
+		sql_exec(db, "UPDATE SETTINGS set VALUE = '%u' where KEY = 'UPDATE_ID'", updateID);
+		sqlite3_close(db);
+		db = NULL;
+	}
+}
+
+static void media_dirs_free(struct media_dir_s **dirs)
+{
+	struct media_dir_s *d;
+
+	if (!dirs)
+		return;
+
+	d = *dirs;
+
+	while (d)
+	{
+		struct media_dir_s *next = d->next;
+
+		free(d->path);
+		free(d);
+		d = next;
+	}
+
+	*dirs = NULL;
+}
+
+static int media_dirs_append(struct media_dir_s **dirs, const char *path)
+{
+	media_types types = ALL_MEDIA;
+	char buf[PATH_MAX];
+	struct media_dir_s *media_dir;
+	char *word = strchr(path, ',');
+
+	if (word && (access(path, F_OK) != 0))
+	{
+		types = 0;
+		while (*path)
+		{
+			if (*path == ',')
+			{
+				path++;
+				break;
+			}
+			else if (*path == 'A' || *path == 'a')
+				types |= TYPE_AUDIO;
+			else if (*path == 'V' || *path == 'v')
+				types |= TYPE_VIDEO;
+			else if (*path == 'P' || *path == 'p')
+				types |= TYPE_IMAGES;
+			else
+				DPRINTF(E_FATAL, L_GENERAL, "Media directory entry not understood [%s]\n", path);
+			path++;
+		}
+	}
+	path = realpath(path, buf);
+	if (!path || access(path, F_OK) != 0)
+	{
+		DPRINTF(E_ERROR, L_GENERAL, "Media directory \"%s\" not accessible [%s]\n",
+			path, strerror(errno));
+		return 1;
+	}
+	media_dir = calloc(1, sizeof(struct media_dir_s));
+	if (!media_dir || !(media_dir->path = strdup(path)))
+	{
+		media_dirs_free(dirs);
+		DPRINTF(E_ERROR, L_GENERAL, "Allocation failed\n");
+		return 1;
+	}
+
+	media_dir->types = types;
+	if (*dirs)
+	{
+		struct media_dir_s *all_dirs = *dirs;
+		while( all_dirs->next )
+			all_dirs = all_dirs->next;
+		all_dirs->next = media_dir;
+	}
+	else
+		*dirs = media_dir;
+
+	return 0;
+}
+
+static void setup_path()
+{
+	if (log_path[0] == '\0')
+	{
+		if (db_path[0] == '\0')
+			strncpyt(log_path, DEFAULT_LOG_PATH, PATH_MAX);
+		else
+			strncpyt(log_path, db_path, PATH_MAX);
+	}
+	if (db_path[0] == '\0')
+		strncpyt(db_path, DEFAULT_DB_PATH, PATH_MAX);
+}
+
+static int setup_db_path(const char *path, char *new_db_path)
+{
+	char *real_path = realpath(path, new_db_path);
+	if (!real_path)
+	{
+		DPRINTF(E_FATAL, L_GENERAL, "Invalid database path! [%s]\n", path);
+		return 1;
+	}
+	make_dir(real_path, S_ISVTX|S_IRWXU|S_IRWXG|S_IRWXO);
+	if (access(real_path, F_OK) != 0)
+	{
+		DPRINTF(E_FATAL, L_GENERAL, "Database path not accessible! [%s]\n", path);
+		return 1;
+	}
+	return 0;
+}
+
 /* init phase :
  * 1) read configuration file
  * 2) read command line arguments
@@ -502,14 +641,13 @@ init(	int argc, char * * argv,
 	const char * presurl = NULL;
 	const char * optionsfile = "/etc/minidlna.conf";
 
+	int ret;
 	char *string, *word;
 	char *path;
 	char buf[PATH_MAX];
 	char log_str[75] = "general,artwork,database,inotify,scanner,metadata,http,ssdp,tivo=info";
 	char *log_level = NULL;
-	struct media_dir_s *media_dir;
 	int ifaces = 0;
-	media_types types;
 	uid_t uid = 0;
 	*updatefile = NULL;
 	*statusfile = NULL;
@@ -584,50 +722,12 @@ init(	int argc, char * * argv,
 			friendly_name_set++;
 			break;
 		case UPNPMEDIADIR:
-			types = ALL_MEDIA;
-			path = ary_options[i].value;
-			word = strchr(path, ',');
-			if (word && (access(path, F_OK) != 0))
+			ret = media_dirs_append(&media_dirs, ary_options[i].value);
+			if (ret != 0)
 			{
-				types = 0;
-				while (*path)
-				{
-					if (*path == ',')
-					{
-						path++;
-						break;
-					}
-					else if (*path == 'A' || *path == 'a')
-						types |= TYPE_AUDIO;
-					else if (*path == 'V' || *path == 'v')
-						types |= TYPE_VIDEO;
-					else if (*path == 'P' || *path == 'p')
-						types |= TYPE_IMAGES;
-					else
-						DPRINTF(E_FATAL, L_GENERAL, "Media directory entry not understood [%s]\n",
-							ary_options[i].value);
-					path++;
-				}
+				return ret;
 			}
-			path = realpath(path, buf);
-			if (!path || access(path, F_OK) != 0)
-			{
-				DPRINTF(E_ERROR, L_GENERAL, "Media directory \"%s\" not accessible [%s]\n",
-					ary_options[i].value, strerror(errno));
-				break;
-			}
-			media_dir = calloc(1, sizeof(struct media_dir_s));
-			media_dir->path = strdup(path);
-			media_dir->types = types;
-			if (media_dirs)
-			{
-				struct media_dir_s *all_dirs = media_dirs;
-				while( all_dirs->next )
-					all_dirs = all_dirs->next;
-				all_dirs->next = media_dir;
-			}
-			else
-				media_dirs = media_dir;
+			media_dirs_count++;
 			break;
 		case UPNPALBUMART_NAMES:
 			for (string = ary_options[i].value; (word = strtok(string, "/")); string = NULL)
@@ -652,13 +752,9 @@ init(	int argc, char * * argv,
 			}
 			break;
 		case UPNPDBDIR:
-			path = realpath(ary_options[i].value, buf);
-			if (!path)
-				path = (ary_options[i].value);
-			make_dir(path, S_ISVTX|S_IRWXU|S_IRWXG|S_IRWXO);
-			if (access(path, F_OK) != 0)
-				DPRINTF(E_FATAL, L_GENERAL, "Database path not accessible! [%s]\n", path);
-			strncpyt(db_path, path, PATH_MAX);
+			if (setup_db_path(ary_options[i].value, buf) != 0)
+				return 1;
+			strncpyt(db_path, buf, PATH_MAX);
 			break;
 		case UPNPLOGDIR:
 			path = realpath(ary_options[i].value, buf);
@@ -753,15 +849,8 @@ init(	int argc, char * * argv,
 				optionsfile);
 		}
 	}
-	if (log_path[0] == '\0')
-	{
-		if (db_path[0] == '\0')
-			strncpyt(log_path, DEFAULT_LOG_PATH, PATH_MAX);
-		else
-			strncpyt(log_path, db_path, PATH_MAX);
-	}
-	if (db_path[0] == '\0')
-		strncpyt(db_path, DEFAULT_DB_PATH, PATH_MAX);
+
+	setup_path();
 
 	/* command line arguments processing */
 	for (i=1; i<argc; i++)
@@ -1037,34 +1126,82 @@ stop_scanning(pid_t *scanner_pid)
 	*scanner_pid = 0;
 }
 
-static void
+static int media_dirs_equal(
+		const struct media_dir_s *new_media_dirs,
+		const size_t new_media_dirs_count)
+{
+	const struct media_dir_s *new_dir, *old_dir;
+
+	if (media_dirs_count != new_media_dirs_count)
+	{
+		return 0;
+	}
+
+	new_dir = new_media_dirs;
+	while (new_dir)
+	{
+		old_dir = media_dirs;
+		while (old_dir)
+		{
+			if (strcmp(old_dir->path, new_dir->path) == 0 &&
+					old_dir->types == new_dir->types)
+			{
+				/* found in an old list */
+				break;
+			}
+
+			old_dir = old_dir->next;
+		}
+
+		if (!old_dir)
+		{
+			/* new_dir not found, lists are different */
+			return 0;
+		}
+
+		new_dir = new_dir->next;
+	}
+
+	return 1;
+}
+
+static int
 read_configuration_updates(
 		const char *const updatefile,
 		const char *const statusfile,
 		pid_t *scanner_pid,
 		pthread_t *inotify_thread)
 {
+	int ret;
 	int ifaces = 0;
 	int rescan = 0;
 	int full = 0;
+	char new_db_path[PATH_MAX] = { '\0' };
+	int update_db_path = 0;
+	int update_media_dirs = 0;
+	struct media_dir_s *new_media_dirs = NULL;
+	size_t new_media_dirs_count = 0;
+
 	DPRINTF(E_INFO, L_GENERAL,
 		"Starting configuration update (%s)...\n", updatefile);
 
-	if(readoptionsfile(updatefile) < 0) {
+	if (readoptionsfile(updatefile) < 0)
+	{
 		/* only error if file exists or using -f */
-		if(access(updatefile, F_OK) == 0) {
+		if (access(updatefile, F_OK) == 0)
+		{
 			DPRINTF(E_ERROR, L_GENERAL,
 				"Error reading configuration file %s\n", updatefile);
+			return 1;
 		}
-
 	} else {
 		int i;
 		char *string, *word;
 		char *rescan_type = NULL;
 
-		for(i=0; i < num_options; i++) {
-
-			switch(ary_options[i].id) {
+		for (i = 0; i < num_options; i++)
+		{
+			switch (ary_options[i].id) {
 			case UPNPIFNAME:
 				for (string = ary_options[i].value; (word = strtok(string, ",")); string = NULL) {
 					if (ifaces >= MAX_LAN_ADDR) {
@@ -1076,16 +1213,29 @@ read_configuration_updates(
 				}
 				runtime_vars.ifaces[ifaces] = NULL;
 				break;
+			case UPNPDBDIR:
+				ret = setup_db_path(ary_options[i].value, new_db_path);
+				if (ret != 0)
+					goto error;
+				update_db_path = (strcmp(new_db_path, db_path) != 0);
+				break;
+			case UPNPMEDIADIR:
+				ret = media_dirs_append(&new_media_dirs, ary_options[i].value);
+				if (ret != 0)
+					goto error;
+				new_media_dirs_count++;
+				break;
 			case RESCAN:
 				rescan_type = ary_options[i].value;
-				if(strcmp(rescan_type, "full") == 0) {
+				if (strcmp(rescan_type, "full") == 0) {
 					rescan = 1;
 					full = 1;
 				} else if(strcmp(rescan_type, "update") == 0) {
 					rescan = 1;
-				} else
+				} else {
 					DPRINTF(E_ERROR, L_GENERAL, "Unknown rescan type: %s\n", rescan_type);
-
+					goto error;
+				}
 				break;
 			default:
 				/* ignore other options */
@@ -1095,25 +1245,69 @@ read_configuration_updates(
 	}
 
 	if (ifaces)
+	{
 		reload_ifaces(1);
+	}
 
-	if (rescan) {
+	update_media_dirs = !media_dirs_equal(new_media_dirs, new_media_dirs_count);
 
-		DPRINTF(E_DEBUG, L_GENERAL, "stopping...\n");
+	if (update_db_path || update_media_dirs || rescan)
+	{
+		DPRINTF(E_INFO, L_GENERAL, "Stopping...\n");
 
 		/* stop a inotify thread and a scanner process */
 		stop_scanning(scanner_pid);
-
 		stop_inotify_thread(inotify_thread);
-
-		check_db(db, 0, scanner_pid, statusfile, full);
-
-		start_inotify_thread(inotify_thread);
-
-	} else {
-		DPRINTF(E_INFO, L_GENERAL, "No database rescan need.\n");
 	}
 
+	if (update_db_path)
+	{
+		DPRINTF(E_INFO, L_GENERAL, "Updating a DB directory...\n");
+
+		media_db_close();
+		strncpyt(db_path, new_db_path, PATH_MAX);
+		setup_path();
+		media_db_open(scanner_pid, statusfile);
+
+		if (!db)
+		{
+			goto error;
+		}
+	}
+
+	if (update_media_dirs)
+	{
+		DPRINTF(E_INFO, L_GENERAL, "Updating media directories...\n");
+
+		media_dirs_free(&media_dirs);
+
+		media_dirs = new_media_dirs;
+		media_dirs_count = new_media_dirs_count;
+	}
+	else
+	{
+		media_dirs_free(&new_media_dirs);
+	}
+
+	if (rescan)
+	{
+		DPRINTF(E_INFO, L_GENERAL, "Starting a DB rescan...\n");
+
+		check_db(db, 0, scanner_pid, statusfile, full);
+	}
+
+	if (update_db_path || update_media_dirs || rescan)
+	{
+		/* start after database updating */
+		start_inotify_thread(inotify_thread);
+	}
+
+	return 0;
+
+error:
+	media_dirs_free(&new_media_dirs);
+
+	return 1;
 }
 
 /* === main === */
@@ -1160,16 +1354,14 @@ main(int argc, char **argv)
 
 	LIST_INIT(&upnphttphead);
 
-	ret = open_db(NULL);
-	if (ret == 0)
+	media_db_open(&scanner_pid, statusfile);
+	if (!db)
 	{
-		updateID = sql_get_int_field(db, "SELECT VALUE from SETTINGS where KEY = 'UPDATE_ID'");
-		if (updateID == -1)
-			ret = -1;
+		DPRINTF(E_ERROR, L_GENERAL, "Failed to open or create a media DB.\n");
+		return 1;
 	}
-	check_db(db, ret, &scanner_pid, statusfile, 0);
-#ifdef HAVE_INOTIFY
 
+#ifdef HAVE_INOTIFY
 	if( GETFLAG(INOTIFY_MASK) )
 	{
 		if (!sqlite3_threadsafe() || sqlite3_libversion_number() < 3005001)
@@ -1179,6 +1371,7 @@ main(int argc, char **argv)
 			start_inotify_thread(&inotify_thread);
 	}
 #endif
+
 	smonitor = OpenAndConfMonitorSocket();
 
 	sssdp = OpenAndConfSSDPReceiveSocket();
@@ -1430,10 +1623,14 @@ main(int argc, char **argv)
 
 update_config:
 
-		if(update_configuration) {
+		if (update_configuration)
+		{
 			dlna_signal_block(SIGHUP);
-			read_configuration_updates(updatefile, statusfile,
-				&scanner_pid, &inotify_thread);
+			if (read_configuration_updates(updatefile, statusfile, &scanner_pid, &inotify_thread) != 0)
+			{
+				DPRINTF(E_ERROR, L_GENERAL, "Failed to reload configuration updates\n");
+				quitting = 1;
+			}
 			update_configuration = 0;
 			dlna_signal_unblock(SIGHUP);
 		}
@@ -1473,8 +1670,7 @@ shutdown:
 	process_reap_children();
 	free(children);
 
-	sql_exec(db, "UPDATE SETTINGS set VALUE = '%u' where KEY = 'UPDATE_ID'", updateID);
-	sqlite3_close(db);
+	media_db_close();
 
 	upnpevents_removeSubscribers();
 
