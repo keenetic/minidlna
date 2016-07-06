@@ -667,7 +667,7 @@ inotify_remove_directory(int fd, const char * path)
 	return ret;
 }
 
-static void *start_inotify(void)
+static void *start_inotify(void *unused)
 {
 	struct pollfd pollfds[1];
 	int timeout = 1000;
