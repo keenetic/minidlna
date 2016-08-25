@@ -122,7 +122,7 @@ lav_open(AVFormatContext **ctx, const char *filename)
 #if LIBAVFORMAT_VERSION_INT >= AV_VERSION_INT(53, 17, 0)
 	ret = avformat_open_input(ctx, filename, NULL, NULL);
 	if (ret == 0) {
-#if  LIBAVFORMAT_VERSION_INT >= AV_VERSION_INT(55, 43, 100)
+#if  LIBAVFORMAT_VERSION_INT > AV_VERSION_INT(56, 1, 0)
 		(*ctx)->max_analyze_duration2 = 1;
 #else
 		(*ctx)->max_analyze_duration = 1;
