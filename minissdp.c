@@ -224,7 +224,7 @@ _usleep(long usecs)
  * to a SSDP "M-SEARCH" */
 static void
 SendSSDPResponse(int s, struct sockaddr_in sockname, int st_no,
-                  const char *host, unsigned short port)
+		 const char *host, unsigned short port, socklen_t len_r)
 {
 	int l, n;
 	char buf[512];
@@ -262,7 +262,7 @@ SendSSDPResponse(int s, struct sockaddr_in sockname, int st_no,
 		inet_ntoa(sockname.sin_addr), ntohs(sockname.sin_port),
 		known_service_types[st_no]);
 	n = sendto(s, buf, l, 0,
-	           (struct sockaddr *)&sockname, sizeof(struct sockaddr_in) );
+	           (struct sockaddr *)&sockname, len_r);
 	if (n < 0)
 		DPRINTF(E_ERROR, L_SSDP, "sendto(udp): %s\n", strerror(errno));
 }
@@ -496,6 +496,7 @@ ProcessSSDPRequest(int s, unsigned short port)
 	int i;
 	char *st = NULL, *mx = NULL, *man = NULL, *mx_end = NULL;
 	int man_len = 0;
+	socklen_t len_r = sizeof(struct sockaddr_in);
 #ifdef __linux__
 	char cmbuf[CMSG_SPACE(sizeof(struct in_pktinfo))];
 	struct iovec iovec = {
@@ -513,10 +514,10 @@ ProcessSSDPRequest(int s, unsigned short port)
 
 	n = recvmsg(s, &mh, 0);
 #else
-	socklen_t len_r = sizeof(struct sockaddr_in);
 
 	n = recvfrom(s, bufr, sizeof(bufr)-1, 0,
 	             (struct sockaddr *)&sendername, &len_r);
+	len_r = MIN(len_r, sizeof(struct sockaddr_in));
 #endif
 	if (n < 0)
 	{
@@ -730,7 +731,7 @@ ProcessSSDPRequest(int s, unsigned short port)
 				}
 				_usleep(random()>>20);
 				SendSSDPResponse(s, sendername, i,
-						host, port);
+						 host, port, len_r);
 				return;
 			}
 			/* Responds to request with ST: ssdp:all */
@@ -741,7 +742,7 @@ ProcessSSDPRequest(int s, unsigned short port)
 				{
 					l = strlen(known_service_types[i]);
 					SendSSDPResponse(s, sendername, i,
-							host, port);
+							 host, port, len_r);
 				}
 			}
 		}
