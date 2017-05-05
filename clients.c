@@ -302,6 +302,10 @@ SearchClientCache(struct in_addr addr, int quiet)
 				}
 				else
 				{
+					DPRINTF(E_INFO, L_HTTP, "Delete client [%s/%s/%02X:%02X:%02X:%02X:%02X:%02X] from cache slot %d.\n",
+								clients[i].type->name, inet_ntoa(clients[i].addr),
+								clients[i].mac[0], clients[i].mac[1], clients[i].mac[2],
+								clients[i].mac[3], clients[i].mac[4], clients[i].mac[5], i);
 					memset(&clients[i], 0, sizeof(struct client_cache_s));
 					return NULL;
 				}
@@ -329,12 +333,14 @@ AddClientCache(struct in_addr addr, int type)
 		clients[i].addr = addr;
 		clients[i].type = &client_types[type];
 		clients[i].age = time(NULL);
-		DPRINTF(E_DEBUG, L_HTTP, "Added client [%s/%s/%02X:%02X:%02X:%02X:%02X:%02X] to cache slot %d.\n",
+		DPRINTF(E_INFO, L_HTTP, "Added client [%s/%s/%02X:%02X:%02X:%02X:%02X:%02X] to cache slot %d.\n",
 					client_types[type].name, inet_ntoa(clients[i].addr),
 					clients[i].mac[0], clients[i].mac[1], clients[i].mac[2],
 					clients[i].mac[3], clients[i].mac[4], clients[i].mac[5], i);
 		return &clients[i];
 	}
+
+	DPRINTF(E_WARN, L_HTTP, "No slots in clients cache\n");
 
 	return NULL;
 }
