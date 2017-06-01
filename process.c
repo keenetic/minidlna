@@ -173,31 +173,25 @@ process_daemonize(void)
 int
 process_check_if_running(const char *fname)
 {
-	char buffer[64];
-	int pidfile;
-	pid_t pid;
+	FILE *pidfile;
+	int pid;
 
 	if(!fname || *fname == '\0')
 		return -1;
 
-	if( (pidfile = open(fname, O_RDONLY)) < 0)
+	if( (pidfile = fopen(fname, "r")) == NULL )
 		return 0;
 
-	memset(buffer, 0, 64);
-
-	if(read(pidfile, buffer, 63) > 0)
+	if( fscanf(pidfile, "%d", &pid) == 1 )
 	{
-		if( (pid = atol(buffer)) > 0)
+		if(!kill((pid_t)pid, 0))
 		{
-			if(!kill(pid, 0))
-			{
-				close(pidfile);
-				return -2;
-			}
+			fclose(pidfile);
+			return -2;
 		}
 	}
 
-	close(pidfile);
+	fclose(pidfile);
 
 	return 0;
 }

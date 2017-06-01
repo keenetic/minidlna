@@ -359,6 +359,8 @@ static void upnp_event_send(struct upnp_event_notify * obj)
 	while( obj->sent < obj->tosend ) {
 		i = send(obj->s, obj->buffer + obj->sent, obj->tosend - obj->sent, 0);
 		if(i<0) {
+			if(errno == EINTR || errno == EAGAIN)
+				continue;
 			DPRINTF(E_WARN, L_HTTP, "%s: send(): %s\n", "upnp_event_send", strerror(errno));
 			obj->state = EError;
 			return;
@@ -374,18 +376,22 @@ static void upnp_event_recv(struct upnp_event_notify * obj)
 	int n;
 	n = recv(obj->s, obj->buffer, obj->buffersize, 0);
 	if(n<0) {
+		if(errno == EINTR || errno == EAGAIN)
+			return; /* nothing is changed, retry later */
 		DPRINTF(E_ERROR, L_HTTP, "%s: recv(): %s\n", "upnp_event_recv", strerror(errno));
 		obj->state = EError;
 		return;
-	}
-	DPRINTF(E_DEBUG, L_HTTP, "%s: (%dbytes) %.*s\n", "upnp_event_recv",
-	       n, n, obj->buffer);
-	obj->state = EFinished;
-	if(obj->sub)
-	{
-		obj->sub->seq++;
-		if (!obj->sub->seq)
+	} else if(n == 0) { /* read until EOS */
+		obj->state = EFinished;
+		if(obj->sub)
+		{
 			obj->sub->seq++;
+			if (!obj->sub->seq)
+				obj->sub->seq++;
+		}
+	} else {
+		DPRINTF(E_DEBUG, L_HTTP, "%s: (%dbytes) %.*s\n", "upnp_event_recv",
+		        n, n, obj->buffer);
 	}
 }
 

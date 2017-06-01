@@ -51,6 +51,7 @@
 #include "codelength.h"
 #include "utils.h"
 #include "log.h"
+#include "io.h"
 
 /* SSDP ip/port */
 #define SSDP_PORT (1900)
@@ -369,7 +370,7 @@ ParseUPnPClient(char *location)
 	n = snprintf(buf, sizeof(buf), "GET /%s HTTP/1.0\r\n"
 	                               "HOST: %s:%ld\r\n\r\n",
 	                               path, addr, port);
-	if (write(s, buf, n) < 1)
+	if (io_write_all(s, buf, n) != n)
 		goto close;
 
 	while ((n = read(s, buf+nread, sizeof(buf)-nread-1)) > 0)
@@ -857,9 +858,9 @@ SubmitServicesToMiniSSDPD(const char *host, unsigned short port)
 		CODELENGTH(l, p);
 		memcpy(p, strbuf, l);
 		p += l;
-		if(write(s, buffer, p - buffer) < 0)
+		if(io_write_all(s, buffer, p - buffer) != p - buffer)
 		{
-			DPRINTF(E_ERROR, L_SSDP, "write(): %s", strerror(errno));
+			DPRINTF(E_ERROR, L_SSDP, "io_write_all(): %s", strerror(errno));
 			close(s);
 			return -1;
 		}

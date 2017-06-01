@@ -43,6 +43,7 @@
 #include "utils.h"
 #include "sql.h"
 #include "log.h"
+#include "io.h"
 
 #define FLAG_TITLE	0x00000001
 #define FLAG_ARTIST	0x00000002
@@ -85,7 +86,7 @@ dlna_timestamp_is_present(const char *filename, int *raw_packet_size)
 	fd = open(filename, O_RDONLY);
 	if( fd < 0 )
 		return 0;
-	i = read(fd, buffer, MPEG_TS_PACKET_LENGTH_DLNA*3);
+	i = io_read_all(fd, buffer, MPEG_TS_PACKET_LENGTH_DLNA*3);
 	close(fd);
 	if( i < 0 )
 		return 0;

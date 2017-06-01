@@ -73,6 +73,7 @@
 #include "utils.h"
 #include "getifaddr.h"
 #include "image_utils.h"
+#include "io.h"
 #include "log.h"
 #include "sql.h"
 #include <libexif/exif-loader.h>
@@ -82,8 +83,8 @@
 #include "process.h"
 #include "sendfile.h"
 
-#define MAX_BUFFER_SIZE 2147483647
-#define MIN_BUFFER_SIZE 65536
+#define MAX_BUFFER_SIZE 0x7ffff000
+#define MIN_BUFFER_SIZE (128 * 1024)
 
 #define INIT_STR(s, d) { s.data = d; s.size = sizeof(d); s.off = 0; }
 
@@ -1054,7 +1055,9 @@ Process_upnphttp(struct upnphttp * h)
 	switch(h->state)
 	{
 	case 0:
-		n = recv(h->socket, buf, 2048, 0);
+		do {
+			n = recv(h->socket, buf, 2048, 0);
+		} while(n < 0 && (errno == EINTR || errno == EAGAIN));
 		if(n<0)
 		{
 			DPRINTF(E_DEBUG, L_HTTP, "recv (state0): %s\n", strerror(errno));
@@ -1100,7 +1103,9 @@ Process_upnphttp(struct upnphttp * h)
 		break;
 	case 1:
 	case 2:
-		n = recv(h->socket, buf, sizeof(buf), 0);
+		do {
+			n = recv(h->socket, buf, 2048, 0);
+		} while(n < 0 && (errno == EINTR || errno == EAGAIN));
 		if(n < 0)
 		{
 			DPRINTF(E_DEBUG, L_HTTP, "recv (state%d): %s\n", h->state, strerror(errno));
@@ -1227,16 +1232,10 @@ SendResp_upnphttp(struct upnphttp * h)
 {
 	int n;
 	DPRINTF(E_DEBUG, L_HTTP, "HTTP RESPONSE: %.*s\n", h->res_buflen, h->res_buf);
-	n = send(h->socket, h->res_buf, h->res_buflen, 0);
+	n = (int)io_send_all(h->socket, h->res_buf, h->res_buflen, 0);
 	if(n<0)
 	{
-		DPRINTF(E_ERROR, L_HTTP, "send(res_buf): %s\n", strerror(errno));
-	}
-	else if(n < h->res_buflen)
-	{
-		/* TODO : handle correctly this case */
-		DPRINTF(E_ERROR, L_HTTP, "send(res_buf): %d bytes sent (out of %d)\n",
-						n, h->res_buflen);
+		DPRINTF(E_ERROR, L_HTTP, "io_send_all(res_buf): %s\n", strerror(errno));
 	}
 }
 
@@ -1245,22 +1244,13 @@ send_data(struct upnphttp * h, char * header, size_t size, int flags)
 {
 	int n;
 
-	n = send(h->socket, header, size, flags);
+	n = (int)io_send_all(h->socket, header, size, flags);
 	if(n<0)
 	{
-		DPRINTF(E_ERROR, L_HTTP, "send(res_buf): %s\n", strerror(errno));
-	} 
-	else if(n < h->res_buflen)
-	{
-		/* TODO : handle correctly this case */
-		DPRINTF(E_ERROR, L_HTTP, "send(res_buf): %d bytes sent (out of %d)\n",
-						n, h->res_buflen);
+		DPRINTF(E_ERROR, L_HTTP, "io_send_all(header): %s\n", strerror(errno));
+		return 1;
 	}
-	else
-	{
-		return 0;
-	}
-	return 1;
+	return 0;
 }
 
 static void
@@ -1282,11 +1272,13 @@ send_file(struct upnphttp * h, int sendfd, off_t offset, off_t end_offset)
 			ret = sys_sendfile(h->socket, sendfd, &offset, send_size);
 			if( ret == -1 )
 			{
-				DPRINTF(E_DEBUG, L_HTTP, "sendfile error :: error no. %d [%s]\n", errno, strerror(errno));
+				const int err = errno;
+
+				DPRINTF(E_DEBUG, L_HTTP, "sendfile error :: error no. %d [%s]\n", err, strerror(err));
 				/* If sendfile isn't supported on the filesystem, don't bother trying to use it again. */
-				if( errno == EOVERFLOW || errno == EINVAL )
+				if( err == EOVERFLOW || err == EINVAL )
 					try_sendfile = 0;
-				else if( errno != EAGAIN )
+				else if( err != EAGAIN )
 					break;
 			}
 			else
@@ -1303,16 +1295,20 @@ send_file(struct upnphttp * h, int sendfd, off_t offset, off_t end_offset)
 		lseek(sendfd, offset, SEEK_SET);
 		ret = read(sendfd, buf, send_size);
 		if( ret == -1 ) {
-			DPRINTF(E_DEBUG, L_HTTP, "read error :: error no. %d [%s]\n", errno, strerror(errno));
-			if( errno == EAGAIN )
+			const int err = errno;
+
+			DPRINTF(E_DEBUG, L_HTTP, "read error :: error no. %d [%s]\n", err, strerror(err));
+			if( err == EINTR || err == EAGAIN )
 				continue;
 			else
 				break;
 		}
 		ret = write(h->socket, buf, ret);
 		if( ret == -1 ) {
-			DPRINTF(E_DEBUG, L_HTTP, "write error :: error no. %d [%s]\n", errno, strerror(errno));
-			if( errno == EAGAIN )
+			const int err = errno;
+
+			DPRINTF(E_DEBUG, L_HTTP, "write error :: error no. %d [%s]\n", err, strerror(err));
+			if( err == EINTR || err == EAGAIN )
 				continue;
 			else
 				break;
@@ -1488,7 +1484,7 @@ SendResp_albumArt(struct upnphttp * h, char * object)
 
 	if( send_data(h, str.data, str.off, MSG_MORE) == 0 )
 	{
-		if( h->req_command != EHead )
+		if( h->req_command != EHead && size > 0 )
 			send_file(h, fd, 0, size-1);
 	}
 	close(fd);
@@ -1536,7 +1532,7 @@ SendResp_caption(struct upnphttp * h, char * object)
 
 	if( send_data(h, str.data, str.off, MSG_MORE) == 0 )
 	{
-		if( h->req_command != EHead )
+		if( h->req_command != EHead && size > 0 )
 			send_file(h, fd, 0, size-1);
 	}
 	close(fd);
@@ -2056,7 +2052,7 @@ SendResp_dlnafile(struct upnphttp *h, char *object)
 	//DEBUG DPRINTF(E_DEBUG, L_HTTP, "RESPONSE: %s\n", str.data);
 	if( send_data(h, str.data, str.off, MSG_MORE) == 0 )
 	{
-		if( h->req_command != EHead )
+		if( h->req_command != EHead && size > 0 )
 			send_file(h, sendfh, offset, h->req_RangeEnd);
 	}
 	close(sendfh);

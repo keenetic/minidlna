@@ -42,6 +42,7 @@
 #include "uuid.h"
 #include "getifaddr.h"
 #include "log.h"
+#include "io.h"
 
 static uint32_t clock_seq;
 static const uint32_t clock_seq_max = 0x3fff; /* 14 bits */

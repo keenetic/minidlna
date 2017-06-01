@@ -58,7 +58,7 @@ _get_wavtags(char *filename, struct song_metadata *psong)
 	}
 
 	len = 12;
-	if(!(len = read(fd, hdr, len)) || (len != 12))
+	if(!(len = io_read_all(fd, hdr, len)) || (len != 12))
 	{
 		DPRINTF(E_WARN, L_SCANNER, "Could not read wav header from %s\n", filename);
 		close(fd);
@@ -82,7 +82,7 @@ _get_wavtags(char *filename, struct song_metadata *psong)
 	while(current_offset + 8 < psong->file_size)
 	{
 		len = 8;
-		if(!(len = read(fd, hdr, len)) || (len != 8))
+		if(!(len = io_read_all(fd, hdr, len)) || (len != 8))
 		{
 			close(fd);
 			DPRINTF(E_WARN, L_SCANNER, "Error reading block: %s\n", filename);
@@ -111,7 +111,7 @@ _get_wavtags(char *filename, struct song_metadata *psong)
 		{
 			//DEBUG DPRINTF(E_DEBUG,L_SCANNER,"Found 'fmt ' header\n");
 			len = 16;
-			if(read(fd, fmt, len) != len)
+			if(io_read_all(fd, fmt, len) != len)
 			{
 				close(fd);
 				DPRINTF(E_WARN, L_SCANNER, "Bad .wav file: can't read fmt: %s\n",
@@ -152,7 +152,7 @@ _get_wavtags(char *filename, struct song_metadata *psong)
 			if(!tags)
 				goto next_block;
 
-			if(read(fd, tags, len) < len ||
+			if(io_read_all(fd, tags, len) != len ||
 			   strncmp(tags, "INFO", 4) != 0)
 			{
 				free(tags);

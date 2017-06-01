@@ -40,6 +40,7 @@
 #include "../metadata.h"
 #include "../utils.h"
 #include "../log.h"
+#include "../io.h"
 
 struct id3header {
 	unsigned char id[3];

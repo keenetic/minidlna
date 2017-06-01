@@ -205,6 +205,7 @@ dnl   loadinfo.h
 dnl   loadmsgcat.c
 dnl   localealias.c
 dnl   log.c
+dnl   io.c
 dnl   plural-exp.h plural-exp.c
 dnl   plural.y
 dnl Used by libglocale.
