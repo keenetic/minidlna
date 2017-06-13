@@ -486,7 +486,7 @@ void
 ProcessSSDPRequest(int s, unsigned short port)
 {
 	int n;
-	char bufr[1500];
+	char bufr[16 * 1024];
 	struct sockaddr_in sendername;
 	int i;
 	char *st = NULL, *mx = NULL, *man = NULL, *mx_end = NULL;
