@@ -61,6 +61,7 @@
 #include <arpa/inet.h>
 #include <fcntl.h>
 #include <errno.h>
+#include <poll.h>
 
 #include "upnpevents.h"
 #include "minidlnapath.h"
@@ -356,7 +357,20 @@ static void upnp_event_send(struct upnp_event_notify * obj)
 {
 	int i;
 	//DEBUG DPRINTF(E_DEBUG, L_HTTP, "Sending UPnP Event:\n%s", obj->buffer+obj->sent);
+
 	while( obj->sent < obj->tosend ) {
+		struct pollfd pfd = {
+			.fd = obj->s,
+			.events = POLLIN
+		};
+		const int n = poll(&pfd, 1, 0);
+
+		if(n==1 && (pfd.revents & POLLHUP)) {
+			DPRINTF(E_DEBUG, L_HTTP, "%s: connection closed by peer\n", "upnp_event_send");
+			obj->state = EError;
+			return;
+		}
+
 		i = send(obj->s, obj->buffer + obj->sent, obj->tosend - obj->sent, 0);
 		if(i<0) {
 			if(errno == EINTR || errno == EAGAIN)
