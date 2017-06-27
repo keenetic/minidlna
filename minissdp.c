@@ -139,17 +139,23 @@ OpenAndConfSSDPNotifySocket(struct lan_addr_s *iface)
 	unsigned char loopchar = 0;
 	int bcast = 1;
 	uint8_t ttl = 4;
-	struct in_addr mc_if;
 	struct sockaddr_in sockname;
-	
+
+#ifdef HAVE_STRUCT_IP_MREQN
+	struct ip_mreqn maddr;
+	memset(&maddr, 0, sizeof(maddr));
+	maddr.imr_ifindex = iface->ifindex;
+#else
+	struct in_addr maddr;
+	maddr.s_addr = iface->addr.s_addr;
+#endif
+
 	s = socket(PF_INET, SOCK_DGRAM, 0);
 	if (s < 0)
 	{
 		DPRINTF(E_ERROR, L_SSDP, "socket(udp_notify): %s\n", strerror(errno));
 		return -1;
 	}
-
-	mc_if.s_addr = iface->addr.s_addr;
 
 	if (setsockopt(s, IPPROTO_IP, IP_MULTICAST_LOOP, (char *)&loopchar, sizeof(loopchar)) < 0)
 	{
@@ -158,7 +164,7 @@ OpenAndConfSSDPNotifySocket(struct lan_addr_s *iface)
 		return -1;
 	}
 
-	if (setsockopt(s, IPPROTO_IP, IP_MULTICAST_IF, (char *)&mc_if, sizeof(mc_if)) < 0)
+	if (setsockopt(s, IPPROTO_IP, IP_MULTICAST_IF, &maddr, sizeof(maddr)) < 0)
 	{
 		DPRINTF(E_ERROR, L_SSDP, "setsockopt(udp_notify, IP_MULTICAST_IF): %s\n", strerror(errno));
 		close(s);
