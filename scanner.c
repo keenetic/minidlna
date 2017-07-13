@@ -46,7 +46,7 @@
 #include "albumart.h"
 #include "containers.h"
 #include "log.h"
-#include "inotify.h"
+#include "monitor.h"
 
 #if SCANDIR_CONST
 typedef const struct dirent scan_filter;

@@ -90,7 +90,7 @@
 #include "process.h"
 #include "upnpevents.h"
 #include "scanner.h"
-#include "inotify.h"
+#include "monitor.h"
 #include "log.h"
 #include "tivo_beacon.h"
 #include "tivo_utils.h"

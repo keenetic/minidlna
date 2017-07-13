@@ -42,7 +42,7 @@
 #include "libav.h"
 
 #include "upnpglobalvars.h"
-#include "inotify.h"
+#include "monitor.h"
 #include "utils.h"
 #include "sql.h"
 #include "scanner.h"

@@ -1,5 +1,5 @@
-#ifndef __INOTIFY_H__
-#define __INOTIFY_H__
+#ifndef __MONITOR_H__
+#define __MONITOR_H__
 
 #include <signal.h>
 #include <pthread.h>
@@ -16,4 +16,4 @@ int monitor_insert_directory(int fd, char *name, const char * path);
 int monitor_remove_file(const char * path);
 int monitor_remove_directory(int fd, const char * path);
 
-#endif //__INOTIFY_H__
+#endif //__MONITOR_H__
