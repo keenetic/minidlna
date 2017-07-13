@@ -350,12 +350,13 @@ check_db(sqlite3 *db, int new_db, pid_t *scanner_pid, const char *statusfile, in
 	if (ret != 0)
 	{
 rescan:
+		rescan_db = 0;
 		if (ret < 0)
 			DPRINTF(E_INFO, L_GENERAL, "Creating new database at %s/%s\n", db_path, DLNA_DB_FILE_NAME);
 		else if (ret == 1)
-			DPRINTF(E_INFO, L_GENERAL, "New media_dir detected; rescanning...\n");
+			DPRINTF(E_INFO, L_GENERAL, "New media_dir detected; rebuilding...\n");
 		else if (ret == 2)
-			DPRINTF(E_INFO, L_GENERAL, "Removed media_dir detected; rescanning...\n");
+			DPRINTF(E_INFO, L_GENERAL, "Removed media_dir detected; rebuilding...\n");
 		else
 			DPRINTF(E_WARN, L_GENERAL, "Database version mismatch (%d=>%d); need to recreate...\n",
 				ret, DB_VERSION);
@@ -371,6 +372,9 @@ rescan:
 		{
 			DPRINTF(E_FATAL, L_GENERAL, "ERROR: Failed to create sqlite database!  Exiting...\n");
 		}
+	}
+	if (ret || rescan_db)
+	{
 #if USE_FORK
 		scanning = 1;
 		sqlite3_close(db);
@@ -937,6 +941,9 @@ init(	int argc, char * * argv,
 		case 'h':
 			runtime_vars.port = -1; // triggers help display
 			break;
+		case 'r':
+			rescan_db = 1;
+			break;
 		case 'R':
 			if ( db_clean_cache(db_path) )
 				DPRINTF(E_WARN, L_GENERAL, "Failed to clean old file cache.\n");
@@ -1005,14 +1012,15 @@ init(	int argc, char * * argv,
 			"\t\t[-i network_interface] [-u uid_to_run_as]\n"
 			"\t\t[-t notify_interval] [-P pid_filename]\n"
 			"\t\t[-s serial] [-m model_number]\n"
-			"\t\t[-w url] [-R] [-L] [-S] [-U] [-V] [-h]\n"
+			"\t\t[-w url] [-r] [-R] [-L] [-S] [-U] [-V] [-h]\n"
 			"\nNotes:\n\tNotify interval is in seconds. Default is 895 seconds.\n"
 			"\tDefault pid file is %s.\n"
 			"\tWith -d minidlna will run in debug mode (not daemonize).\n"
 			"\t-w sets the presentation url. Default is http address on port 80\n"
 			"\t-v enables verbose output\n"
 			"\t-h displays this text\n"
-			"\t-R forces a full rescan\n"
+			"\t-r forces a rescan\n"
+			"\t-R forces a rebuild\n"
 			"\t-L do not create playlists\n"
 			"\t-S status_file\n"
 			"\t-U configuration update file\n"
