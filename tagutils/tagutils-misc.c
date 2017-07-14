@@ -31,6 +31,7 @@ typedef enum {
 	ICONV_FATAL
 } iconv_result;
 
+#if 0
 #ifdef HAVE_ICONV
 static iconv_result
 do_iconv(const char* to_ces, const char* from_ces,
@@ -67,7 +68,6 @@ do_iconv(const char* to_ces, const char* from_ces,
 	return ret;
 }
 #else // HAVE_ICONV
-#if 0
 static iconv_result
 do_iconv(const char* to_ces, const char* from_ces,
 	 char *inbuf,  size_t inbytesleft,
@@ -75,8 +75,8 @@ do_iconv(const char* to_ces, const char* from_ces,
 {
 	return ICONV_FATAL;
 }
-#endif
 #endif // HAVE_ICONV
+#endif
 
 #define N_LANG_ALT 8
 struct {
