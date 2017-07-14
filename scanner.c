@@ -883,7 +883,7 @@ cb_orphans(void *args, int argc, char **argv, char **azColName)
 	/* If we can't access the path, remove it */
 	if (access(path, R_OK) != 0)
 	{
-		DPRINTF(E_DEBUG, L_SCANNER, "Removing %s [%s]\n", path, mime ? "file" : "dir");
+		DPRINTF(E_ERROR, L_SCANNER, "Removing %s [%s]\n", path, mime ? "file" : "dir");
 		if (mime)
 			monitor_remove_file(path);
 		else
@@ -903,13 +903,13 @@ start_rescan(void)
 	const char *sql_dir = "SELECT path, mime FROM details WHERE path NOT NULL AND mime IS NULL;";
 	int ret;
 
-	DPRINTF(E_INFO, L_SCANNER, "Starting rescan\n");
+	DPRINTF(E_ERROR, L_SCANNER, "Starting rescan\n");
 
 	/* Find and remove any dead directory links */
 	ret = sqlite3_exec(db, sql_dir, cb_orphans, NULL, &zErrMsg);
 	if (ret != SQLITE_OK)
 	{
-		DPRINTF(E_MAXDEBUG, L_SCANNER, "SQL error: %s\nBAD SQL: %s\n", zErrMsg, sql_dir);
+		DPRINTF(E_ERROR, L_SCANNER, "SQL error: %s\nBAD SQL: %s\n", zErrMsg, sql_dir);
 		sqlite3_free(zErrMsg);
 	}
 
@@ -917,7 +917,7 @@ start_rescan(void)
 	ret = sqlite3_exec(db, sql_files, cb_orphans, NULL, &zErrMsg);
 	if (ret != SQLITE_OK)
 	{
-		DPRINTF(E_MAXDEBUG, L_SCANNER, "SQL error: %s\nBAD SQL: %s\n", zErrMsg, sql_files);
+		DPRINTF(E_ERROR, L_SCANNER, "SQL error: %s\nBAD SQL: %s\n", zErrMsg, sql_files);
 		sqlite3_free(zErrMsg);
 	}
 

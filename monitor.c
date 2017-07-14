@@ -178,7 +178,7 @@ inotify_create_watches(int fd)
 
 	for( media_path = media_dirs; media_path != NULL; media_path = media_path->next )
 	{
-		DPRINTF(E_INFO, L_INOTIFY, "Add watch to %s\n", media_path->path);
+		DPRINTF(E_DEBUG, L_INOTIFY, "Add watch to %s\n", media_path->path);
 		add_watch(fd, media_path->path);
 		num_watches++;
 	}
@@ -447,7 +447,7 @@ monitor_insert_file(char * name, const char * path)
 
 		do
 		{
-			DPRINTF(E_DEBUG, L_INOTIFY, "Checking %s\n", parent_buf);
+			//DPRINTF(E_DEBUG, L_INOTIFY, "Checking %s\n", parent_buf);
 			id = sql_get_text_field(db, "SELECT OBJECT_ID from OBJECTS o left join DETAILS d on (d.ID = o.DETAIL_ID)"
 			                            " where d.PATH = '%q' and REF_ID is NULL", parent_buf);
 			if( id )
@@ -482,13 +482,13 @@ monitor_insert_file(char * name, const char * path)
 
 	if( !depth )
 	{
-		DPRINTF(E_DEBUG, L_INOTIFY, "Inserting %s\n", name);
+		//DPRINTF(E_DEBUG, L_INOTIFY, "Inserting %s\n", name);
 		insert_file(name, path, id+2, get_next_available_id("OBJECTS", id), types);
 		sqlite3_free(id);
 		if( (is_audio(path) || is_playlist(path)) && next_pl_fill != 1 )
 		{
 			next_pl_fill = time(NULL) + 120; // Schedule a playlist scan for 2 minutes from now.
-			DPRINTF(E_WARN, L_INOTIFY,  "Playlist scan scheduled for %s", ctime(&next_pl_fill));
+			//DPRINTF(E_WARN, L_INOTIFY,  "Playlist scan scheduled for %s", ctime(&next_pl_fill));
 		}
 	}
 	return depth;
@@ -718,7 +718,7 @@ static void *start_inotify(void *unused)
 				snprintf(path_buf, sizeof(path_buf), "%s/%s", get_path_from_wd(event->wd), event->name);
 				if ( event->mask & IN_ISDIR && (event->mask & (IN_CREATE|IN_MOVED_TO)) )
 				{
-					DPRINTF(E_INFO, L_INOTIFY,  "The directory %s was %s.\n",
+					DPRINTF(E_DEBUG, L_INOTIFY,  "The directory %s was %s.\n",
 						path_buf, (event->mask & IN_MOVED_TO ? "moved here" : "created"));
 					monitor_insert_directory(pollfds[0].fd, esc_name, path_buf);
 				}
@@ -740,7 +740,7 @@ static void *start_inotify(void *unused)
 						if( (event->mask & IN_MOVED_TO) ||
 						    (sql_get_int_field(db, "SELECT TIMESTAMP from DETAILS where PATH = '%q'", path_buf) != st.st_mtime) )
 						{
-							DPRINTF(E_INFO, L_INOTIFY, "The file %s was %s.\n",
+							DPRINTF(E_DEBUG, L_INOTIFY, "The file %s was %s.\n",
 								path_buf, (event->mask & IN_MOVED_TO ? "moved here" : "changed"));
 							monitor_insert_file(esc_name, path_buf);
 						}
@@ -748,7 +748,7 @@ static void *start_inotify(void *unused)
 				}
 				else if ( event->mask & (IN_DELETE|IN_MOVED_FROM) )
 				{
-					DPRINTF(E_INFO, L_INOTIFY, "The %s %s was %s.\n",
+					DPRINTF(E_DEBUG, L_INOTIFY, "The %s %s was %s.\n",
 						(event->mask & IN_ISDIR ? "directory" : "file"),
 						path_buf, (event->mask & IN_MOVED_FROM ? "moved away" : "deleted"));
 					if ( event->mask & IN_ISDIR )
