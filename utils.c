@@ -250,6 +250,8 @@ strip_ext(char *name)
 {
 	char *period;
 
+	if (!name)
+		return NULL;
 	period = strrchr(name, '.');
 	if (period)
 		*period = '\0';
