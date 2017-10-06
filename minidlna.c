@@ -853,6 +853,8 @@ init(	int argc, char * * argv,
 					DPRINTF(E_FATAL, L_GENERAL, "Bad user '%s'.\n",
 						ary_options[i].value);
 				uid = entry->pw_uid;
+				if (!gid)
+					gid = entry->pw_gid;
 			}
 			break;
 		case FORCE_SORT_CRITERIA:
@@ -989,6 +991,8 @@ init(	int argc, char * * argv,
 					if (!entry)
 						DPRINTF(E_FATAL, L_GENERAL, "Bad user '%s'.\n", argv[i]);
 					uid = entry->pw_uid;
+					if (!gid)
+						gid = entry->pw_gid;
 				}
 			}
 			else
