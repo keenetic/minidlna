@@ -240,6 +240,7 @@ done
 test x"$ac_cv_header_jpeglib_h" != x"yes" && AC_MSG_ERROR([libjpeg headers not found or not usable])
 test x"$ac_cv_header_sqlite3_h" != x"yes" && AC_MSG_ERROR([libsqlite3 headers not found or not usable])
 test x"$ac_cv_header_libexif_exif_loader_h" != x"yes" && AC_MSG_ERROR([libexif headers not found or not usable])
+test x"$ac_cv_header_id3tag_h" != x"yes" && AC_MSG_ERROR([libid3tag headers not found or not usable])
 
 CFLAGS_SAVE="$CFLAGS"
 CFLAGS="$CFLAGS -Wall -Werror"
@@ -392,6 +393,18 @@ for dir in "" /usr/local $SEARCH_DIR; do
 done
 test x"$ac_cv_lib_jpeg_jpeg_set_defaults" = x"yes" || AC_MSG_ERROR([Could not find libexif])
 AC_SUBST(LIBEXIF_LIBS)
+
+LDFLAGS_SAVE="$LDFLAGS"
+for dir in "" /usr/local $SEARCH_DIR; do
+    LDFLAGS="$LDFLAGS -lz"
+    if test -n "$dir"; then
+        LDFLAGS="$LDFLAGS -L$dir/lib"
+    fi
+    AC_CHECK_LIB([id3tag], [id3_file_open], [LIBID3TAG_LIBS="-lid3tag"], [unset ac_cv_lib_id3tag_id3_file_open; LDFLAGS="$LDFLAGS_SAVE"; continue])
+    break
+done
+test x"$ac_cv_lib_id3tag_id3_file_open" = x"yes" || AC_MSG_ERROR([Could not find libid3tag])
+AC_SUBST(LIBID3TAG_LIBS)
 
 LDFLAGS_SAVE="$LDFLAGS"
 for dir in "" /usr/local $SEARCH_DIR; do

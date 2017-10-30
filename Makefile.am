@@ -32,6 +32,7 @@ minidlnad_SOURCES = minidlna.c upnphttp.c upnpdescgen.c upnpsoap.c \
 
 minidlnad_LDADD = \
 	@LIBJPEG_LIBS@ \
+	@LIBID3TAG_LIBS@ \
 	@LIBSQLITE3_LIBS@ \
 	@LIBAVFORMAT_LIBS@ \
 	@LIBAVUTIL_LIBS@ \
@@ -43,6 +44,7 @@ minidlnad_LDFLAGS = @STATIC_LDFLAGS@
 testupnpdescgen_SOURCES = testupnpdescgen.c upnpdescgen.c
 testupnpdescgen_LDADD = \
 	@LIBJPEG_LIBS@ \
+	@LIBID3TAG_LIBS@ \
 	@LIBSQLITE3_LIBS@ \
 	@LIBAVFORMAT_LIBS@ \
 	@LIBAVUTIL_LIBS@ \

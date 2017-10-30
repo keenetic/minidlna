@@ -627,6 +627,7 @@ STATIC_CFLAGS
 LIBAVUTIL_LIBS
 LIBAVFORMAT_LIBS
 LIBSQLITE3_LIBS
+LIBID3TAG_LIBS
 LIBEXIF_LIBS
 LIBJPEG_LIBS
 LIBOBJS
@@ -9172,6 +9173,7 @@ done
 test x"$ac_cv_header_jpeglib_h" != x"yes" && as_fn_error $? "libjpeg headers not found or not usable" "$LINENO" 5
 test x"$ac_cv_header_sqlite3_h" != x"yes" && as_fn_error $? "libsqlite3 headers not found or not usable" "$LINENO" 5
 test x"$ac_cv_header_libexif_exif_loader_h" != x"yes" && as_fn_error $? "libexif headers not found or not usable" "$LINENO" 5
+test x"$ac_cv_header_id3tag_h" != x"yes" && as_fn_error $? "libid3tag headers not found or not usable" "$LINENO" 5
 
 CFLAGS_SAVE="$CFLAGS"
 CFLAGS="$CFLAGS -Wall -Werror"
@@ -9382,6 +9384,7 @@ CFLAGS="$CFLAGS_SAVE"
 
 LDFLAGS_SAVE="$LDFLAGS"
 for dir in "" /usr/local $SEARCH_DIR; do
+    LDFLAGS="$LDFLAGS -lz"
     if test -n "$dir"; then
         LDFLAGS="$LDFLAGS -L$dir/lib"
     fi
@@ -9482,6 +9485,58 @@ fi
     break
 done
 test x"$ac_cv_lib_jpeg_jpeg_set_defaults" = x"yes" || as_fn_error $? "Could not find libexif" "$LINENO" 5
+
+
+LDFLAGS_SAVE="$LDFLAGS"
+for dir in "" /usr/local $SEARCH_DIR; do
+    if test -n "$dir"; then
+        LDFLAGS="$LDFLAGS -L$dir/lib"
+    fi
+    { $as_echo "$as_me:${as_lineno-$LINENO}: checking for id3_file_open in -lid3tag" >&5
+$as_echo_n "checking for id3_file_open in -lid3tag... " >&6; }
+if ${ac_cv_lib_id3tag_id3_file_open+:} false; then :
+  $as_echo_n "(cached) " >&6
+else
+  ac_check_lib_save_LIBS=$LIBS
+LIBS="-lid3tag -lz $LIBS"
+cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+/* Override any GCC internal prototype to avoid an error.
+   Use char because int might match the return type of a GCC
+   builtin and then its argument prototype would still apply.  */
+#ifdef __cplusplus
+extern "C"
+#endif
+char id3_file_open ();
+int
+main ()
+{
+return id3_file_open ();
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_link "$LINENO"; then :
+  ac_cv_lib_id3tag_id3_file_open=yes
+else
+  ac_cv_lib_id3tag_id3_file_open=no
+fi
+rm -f core conftest.err conftest.$ac_objext \
+    conftest$ac_exeext conftest.$ac_ext
+LIBS=$ac_check_lib_save_LIBS
+fi
+{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $ac_cv_lib_id3tag_id3_file_open" >&5
+$as_echo "$ac_cv_lib_id3tag_id3_file_open" >&6; }
+if test "x$ac_cv_lib_id3tag_id3_file_open" = xyes; then :
+  LIBID3TAG_LIBS="-lid3tag"
+else
+  unset ac_cv_lib_id3tag_id3_file_open; LDFLAGS="$LDFLAGS_SAVE"; continue
+fi
+
+    break
+done
+test x"$ac_cv_lib_id3tag_id3_file_open" = x"yes" || as_fn_error $? "Could not find libid3tag" "$LINENO" 5
 
 
 LDFLAGS_SAVE="$LDFLAGS"

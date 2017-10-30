@@ -31,7 +31,7 @@ typedef enum {
 	ICONV_FATAL
 } iconv_result;
 
-#if 0
+#if 1
 #ifdef HAVE_ICONV
 static iconv_result
 do_iconv(const char* to_ces, const char* from_ces,
@@ -105,7 +105,8 @@ _lang2cp(char *lang)
 	}
 	return -2;
 }
-#if 0
+#if 1
+#include <id3tag.h>
 static unsigned char*
 _get_utf8_text(const id3_ucs4_t* native_text)
 {
