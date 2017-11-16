@@ -1240,6 +1240,7 @@ read_configuration_updates(
 					full = 1;
 				} else if(strcmp(rescan_type, "update") == 0) {
 					rescan = 1;
+					rescan_db = 1;
 				} else {
 					DPRINTF(E_ERROR, L_GENERAL, "Unknown rescan type: %s\n", rescan_type);
 					goto error;
