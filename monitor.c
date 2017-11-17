@@ -649,7 +649,8 @@ static void *start_inotify(void *unused)
 
 	while( !quitting && !stop_notifier )
 	{
-		int timeout = -1;
+		int timeout = 1000;
+/*
 		if (next_pl_fill)
 		{
 			time_t diff = next_pl_fill - time(NULL);
@@ -658,6 +659,7 @@ static void *start_inotify(void *unused)
 			else
 				timeout = diff * 1000;
 		}
+*/
 		length = poll(pollfds, 1, timeout);
 		if( !length )
 		{
