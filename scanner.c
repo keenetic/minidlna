@@ -888,7 +888,7 @@ start_rescan(void)
 	const char *summary;
 	int ret;
 
-	DPRINTF(E_ERROR, L_SCANNER, "Starting rescan\n");
+	DPRINTF(E_INFO, L_SCANNER, "Starting rescan\n");
 
 	/* Find and remove any dead directory links */
 	ret = sqlite3_exec(db, sql_dir, cb_orphans, NULL, &zErrMsg);
