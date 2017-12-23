@@ -12,7 +12,7 @@
 #define NDM_CONV_ICONV_COMPAT
 #include <ndm/conv.h>
 
-inline int
+static inline int
 is_utf8(const char *s) {
 	while( s && *s ) {
 		if( (*s & 0xc0) == 0x80 ) break;
