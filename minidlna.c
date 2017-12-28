@@ -738,6 +738,7 @@ init(	int argc, char * * argv,
 	int ifaces = 0;
 	uid_t uid = 0;
 	gid_t gid = 0;
+	int error;
 	*updatefile = NULL;
 	*statusfile = NULL;
 	int uuid_set = 0;
@@ -1244,7 +1245,9 @@ init(	int argc, char * * argv,
 		return 1;
 	}
 
-	event_module.init();
+	if ((error = event_module.init()) != 0)
+		DPRINTF(E_FATAL, L_GENERAL, "Failed to init event module. "
+		    "[%s] EXITING.\n", strerror(error));
 
 	return 0;
 }
