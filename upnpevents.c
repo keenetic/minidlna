@@ -372,7 +372,7 @@ static void upnp_event_send(struct upnp_event_notify * obj)
 		if(n==1 && (pfd.revents & POLLHUP)) {
 			DPRINTF(E_DEBUG, L_HTTP, "%s: connection closed by peer\n", "upnp_event_send");
 			obj->state = EError;
-			event_module.del(&obj->ev);
+			event_module.del(&obj->ev, 0);
 			return;
 		}
 
@@ -382,14 +382,14 @@ static void upnp_event_send(struct upnp_event_notify * obj)
 				continue;
 			DPRINTF(E_WARN, L_HTTP, "%s: send(): %s\n", "upnp_event_send", strerror(errno));
 			obj->state = EError;
-			event_module.del(&obj->ev);
+			event_module.del(&obj->ev, 0);
 			return;
 		}
 		obj->sent += i;
 	}
 	if(obj->sent == obj->tosend) {
 		obj->state = EWaitingForResponse;
-		event_module.del(&obj->ev);
+		event_module.del(&obj->ev, 0);
 		obj->ev.rdwr = EVENT_READ;
 		event_module.add(&obj->ev);
 	}
@@ -404,11 +404,11 @@ static void upnp_event_recv(struct upnp_event_notify * obj)
 			return; /* nothing is changed, retry later */
 		DPRINTF(E_ERROR, L_HTTP, "%s: recv(): %s\n", "upnp_event_recv", strerror(errno));
 		obj->state = EError;
-		event_module.del(&obj->ev);
+		event_module.del(&obj->ev, 0);
 		return;
 	} else if(n == 0) { /* read until EOS */
 		obj->state = EFinished;
-		event_module.del(&obj->ev);
+		event_module.del(&obj->ev, 0);
 		if(obj->sub)
 		{
 			obj->sub->seq++;
