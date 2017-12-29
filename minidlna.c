@@ -446,7 +446,6 @@ rescan:
 	if (ret || GETFLAG(RESCAN_MASK))
 	{
 #if USE_FORK
-		SETFLAG(SCANNING_MASK);
 		sqlite3_close(db);
 		*scanner_pid = fork();
 		open_db(&db);
@@ -463,6 +462,8 @@ rescan:
 		{
 			start_scanner(statusfile);
 		}
+		else
+			SETFLAG(SCANNING_MASK);
 #else
 		start_scanner(statusfile);
 #endif
@@ -1528,7 +1529,12 @@ main(int argc, char **argv)
 		else
 			start_inotify_thread(&inotify_thread);
 	}
-#endif
+#endif /* HAVE_INOTIFY */
+
+#ifdef HAVE_KQUEUE
+	if (!GETFLAG(SCANNING_MASK))
+		kqueue_monitor_start();
+#endif /* HAVE_KQUEUE */
 
 	smonitor = OpenAndConfMonitorSocket();
 	if (smonitor > 0)
@@ -1650,6 +1656,9 @@ main(int argc, char **argv)
 		{
 			if (_get_dbtime() != lastdbtime)
 				updateID++;
+#ifdef HAVE_KQUEUE
+			kqueue_monitor_start();
+#endif /* HAVE_KQUEUE */
 		}
 
 		if (timeout > MIN_LOOP_INTERVAL_MS)
