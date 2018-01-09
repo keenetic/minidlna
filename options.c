@@ -66,7 +66,8 @@ static const struct {
 	{ MAX_CONNECTIONS, "max_connections" },
 	{ MERGE_MEDIA_DIRS, "merge_media_dirs" },
 	{ RESCAN, "rescan" },
-	{ WIDE_LINKS, "wide_links" }
+	{ WIDE_LINKS, "wide_links" },
+	{ ENABLE_SUBTITLES, "enable_subtitles" },
 };
 
 int

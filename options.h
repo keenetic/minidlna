@@ -59,7 +59,8 @@ enum upnpconfigoptions {
 	MAX_CONNECTIONS,		/* maximum number of simultaneous connections */
 	MERGE_MEDIA_DIRS,		/* don't add an extra directory level when there are multiple media dirs */
 	RESCAN,				/* rescan base type (update or full) */
-	WIDE_LINKS			/* allow following symlinks outside the defined media_dirs */
+	WIDE_LINKS,			/* allow following symlinks outside the defined media_dirs */
+	ENABLE_SUBTITLES,		/* Enable generic subtitle support for all clients by default */
 };
 
 /* readoptionsfile()
