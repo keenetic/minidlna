@@ -336,9 +336,8 @@ check_db(sqlite3 *db, int new_db, pid_t *scanner_pid, const char *statusfile, in
 						media_path->path);
 			if (ret != media_path->types)
 			{
-				DPRINTF(E_WARN, L_GENERAL, "New media_dir [%s] detected; rebuilding...\n", media_path->path);
-				SETFLAG(RESCAN_MASK);
-				goto soft_rescan;
+				ret = 1;
+				goto rescan;
 			}
 			media_path = media_path->next;
 		}
@@ -355,10 +354,9 @@ check_db(sqlite3 *db, int new_db, pid_t *scanner_pid, const char *statusfile, in
 			}
 			if (!media_path)
 			{
-				DPRINTF(E_WARN, L_GENERAL, "Removed media_dir [%s] detected; rebuilding...\n", result[i]);
+				ret = 2;
 				sqlite3_free_table(result);
-				SETFLAG(RESCAN_MASK);
-				goto soft_rescan;
+				goto rescan;
 			}
 		}
 		sqlite3_free_table(result);
@@ -371,12 +369,10 @@ rescan:
 		CLEARFLAG(RESCAN_MASK);
 		if (ret < 0)
 			DPRINTF(E_INFO, L_GENERAL, "Creating new database at %s/%s\n", db_path, DLNA_DB_FILE_NAME);
-#if 0
 		else if (ret == 1)
 			DPRINTF(E_INFO, L_GENERAL, "New media_dir detected; rebuilding...\n");
 		else if (ret == 2)
 			DPRINTF(E_INFO, L_GENERAL, "Removed media_dir detected; rebuilding...\n");
-#endif
 		else if (ret == 3)
 			DPRINTF(E_INFO, L_GENERAL, "Full rescan started...\n");
 		else
@@ -397,7 +393,6 @@ rescan:
 	}
 	if (ret || GETFLAG(RESCAN_MASK))
 	{
-soft_rescan:
 #if USE_FORK
 		SETFLAG(SCANNING_MASK);
 		sqlite3_close(db);
