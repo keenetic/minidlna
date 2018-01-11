@@ -864,6 +864,11 @@ init(	int argc, char * * argv,
 				DPRINTF(E_ERROR, L_GENERAL, "Allocation failed\n");
 				return 1;
 			}
+			if (force_sort_criteria[0] == '!')
+			{
+				SETFLAG(FORCE_ALPHASORT_MASK);
+				force_sort_criteria++;
+			}
 			break;
 		case MAX_CONNECTIONS:
 			runtime_vars.max_connections = atoi(ary_options[i].value);
