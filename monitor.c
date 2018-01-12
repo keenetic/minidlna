@@ -536,7 +536,7 @@ monitor_insert_directory(int fd, char *name, const char * path)
 		return -1;
 	}
 
-	while( (e = readdir(ds)) )
+	while( !quitting && (e = readdir(ds)) )
 	{
 		if( e->d_name[0] == '.' )
 			continue;
@@ -684,7 +684,7 @@ static void *start_inotify(void *unused)
 		}
 
 		i = 0;
-		while( i < length )
+		while( !quitting && i < length )
 		{
 			struct inotify_event * event = (struct inotify_event *) &buffer[i];
 			if( event->len )
