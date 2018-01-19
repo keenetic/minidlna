@@ -1039,6 +1039,7 @@ callback(void *args, int argc, char **argv, char **azColName)
 				              sql_get_int_field(db, "SELECT WATCH_COUNT from BOOKMARKS where ID = '%s'", detailID));
 			}
 		}
+		free(alt_title);
 		if( artist ) {
 			if( (*mime == 'v') && (passed_args->filter & FILTER_UPNP_ACTOR) ) {
 				ret = strcatf(str, "&lt;upnp:actor&gt;%s&lt;/upnp:actor&gt;", artist);
@@ -1176,7 +1177,6 @@ callback(void *args, int argc, char **argv, char **azColName)
 							                   "&lt;/sec:CaptionInfoEx&gt;",
 							                   lan_addr[passed_args->iface].str, runtime_vars.port, detailID);
 					}
-					free(alt_title);
 					break;
 				}
 			}
@@ -1530,7 +1530,7 @@ parse_search_criteria(const char *str, char *sep)
 {
 	struct string_s criteria;
 	int len;
-	int literal = 0, like = 0;
+	int literal = 0, like = 0, class = 0;
 	const char *s;
 
 	if (!str)
@@ -1580,13 +1580,17 @@ parse_search_criteria(const char *str, char *sep)
 				}
 				break;
 			case 'o':
-				if (strncmp(s, "object.", 7) == 0)
-					s += 7;
-				else if (strncmp(s, "object\"", 7) == 0 ||
-				         strncmp(s, "object&quot;", 12) == 0)
+				if (class)
 				{
-					s += 6;
-					continue;
+					class = 0;
+					if (strncmp(s, "object.", 7) == 0)
+						s += 7;
+					else if (strncmp(s, "object\"", 7) == 0 ||
+					         strncmp(s, "object&quot;", 12) == 0)
+					{
+						s += 6;
+						continue;
+					}
 				}
 			default:
 				charcat(&criteria, *s);
@@ -1728,11 +1732,29 @@ parse_search_criteria(const char *str, char *sep)
 				else
 					charcat(&criteria, *s);
 				break;
+			case 'o':
+				if (class)
+				{
+					if (strncmp(s, "object.", 7) == 0)
+					{
+						s += 7;
+						charcat(&criteria, '"');
+						while (*s && !isspace(*s))
+						{
+							charcat(&criteria, *s);
+							s++;
+						}
+						charcat(&criteria, '"');
+					}
+					class = 0;
+					continue;
+				}
 			case 'u':
 				if (strncmp(s, "upnp:class", 10) == 0)
 				{
 					strcatf(&criteria, "o.CLASS");
 					s += 10;
+					class = 1;
 					continue;
 				}
 				else if (strncmp(s, "upnp:actor", 10) == 0)
