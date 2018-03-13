@@ -851,7 +851,12 @@ init(	int argc, char * * argv,
 			}
 			break;
 		case FORCE_SORT_CRITERIA:
-			force_sort_criteria = ary_options[i].value;
+			force_sort_criteria = strdup(ary_options[i].value);
+			if (!force_sort_criteria)
+			{
+				DPRINTF(E_ERROR, L_GENERAL, "Allocation failed\n");
+				return 1;
+			}
 			break;
 		case MAX_CONNECTIONS:
 			runtime_vars.max_connections = atoi(ary_options[i].value);
