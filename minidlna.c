@@ -825,7 +825,12 @@ init(	int argc, char * * argv,
 				runtime_vars.root_container = IMAGE_ID;
 				break;
 			default:
-				runtime_vars.root_container = ary_options[i].value;
+				runtime_vars.root_container = strdup(ary_options[i].value);
+				if (!runtime_vars.root_container)
+				{
+					DPRINTF(E_ERROR, L_GENERAL, "Allocation failed\n");
+					return 1;
+				}
 				DPRINTF(E_WARN, L_GENERAL, "Using arbitrary root container [%s]\n",
 					ary_options[i].value);
 				break;
