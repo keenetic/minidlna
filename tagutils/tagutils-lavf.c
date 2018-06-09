@@ -45,7 +45,7 @@ static void meta_parse(struct song_metadata *psong, const char *key, const char 
 		} else {
 			psong->track = atoi(val);
 		}
-	} else if( !strcasecmp(key, "DISCNUMBER") ) {
+	} else if( !strcasecmp(key, "DISC") ) {
 		psong->disc = atoi(val);
 	} else if( !strcasecmp(key, "GENRE") )	{
 		if( *val ) psong->genre = strdup(val);
@@ -84,6 +84,7 @@ static int _get_flctags(char *file, struct song_metadata *psong) {
 static int _get_wavtags(char *file, struct song_metadata *psong) {
 	psong->lossless = 1;
 	psong->vbr_scale = 1;
+	xasprintf(&(psong->dlna_pn), "LPCM");
 	return 0;
 }
 
@@ -96,6 +97,7 @@ static int _get_oggtags(char *file, struct song_metadata *psong) {
 static int _get_mp3tags(char *file, struct song_metadata *psong) {
 	psong->lossless = 0;
 	psong->vbr_scale = 0;
+	xasprintf(&(psong->dlna_pn), "MP3");
 	return 0;
 }
 
