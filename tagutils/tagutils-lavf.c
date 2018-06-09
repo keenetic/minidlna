@@ -46,7 +46,18 @@ static void meta_parse(struct song_metadata *psong, const char *key, const char 
 			psong->track = atoi(val);
 		}
 	} else if( !strcasecmp(key, "DISC") ) {
-		psong->disc = atoi(val);
+		if( strrchr(val, '/') ) {
+			char *tmp = strdup(val);
+			if(tmp) {
+				char *tdsk = tmp;
+				char *dsk = strsep(&tdsk, "/");
+				psong->disc = atoi(dsk);
+				psong->total_discs = atoi(tdsk);
+			}
+			free(tmp);
+		} else {
+			psong->disc = atoi(val);
+		}
 	} else if( !strcasecmp(key, "GENRE") )	{
 		if( *val ) psong->genre = strdup(val);
 	} else if( !strcasecmp(key, "DATE") ) {
