@@ -22,6 +22,8 @@ is_utf8(const char *s) {
 }
 
 static void meta_parse(struct song_metadata *psong, const char *key, const char *val) {
+	DPRINTF(E_DEBUG, L_METADATA, "meta_parse [%s] [%s]\n", key, val);
+
 	if( !strcasecmp(key, "ALBUM") ) {
 		if( *val ) psong->album = strdup(val);
 	} else if( !strcasecmp(key, "ARTISTSORT") ) {
@@ -30,8 +32,19 @@ static void meta_parse(struct song_metadata *psong, const char *key, const char 
 		if( *val ) psong->contributor[ROLE_ARTIST] = strdup(val);
 	} else if( !strcasecmp(key, "TITLE") ) {
 		if( *val ) psong->title = strdup(val);
-	} else if( !strcasecmp(key, "TRACKNUMBER") ) {
-		psong->track = atoi(val);
+	} else if( !strcasecmp(key, "TRACK") ) {
+		if( strrchr(val, '/') ) {
+			char *tmp = strdup(val);
+			if(tmp) {
+				char *ttrk = tmp;
+				char *trk = strsep(&ttrk, "/");
+				psong->track = atoi(trk);
+				psong->total_tracks = atoi(ttrk);
+			}
+			free(tmp);
+		} else {
+			psong->track = atoi(val);
+		}
 	} else if( !strcasecmp(key, "DISCNUMBER") ) {
 		psong->disc = atoi(val);
 	} else if( !strcasecmp(key, "GENRE") )	{
