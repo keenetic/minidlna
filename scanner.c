@@ -566,7 +566,7 @@ CreateDatabase(void)
 	}
 	for( int i=0; magic_containers[i].objectid_match; i++ )
 	{
-		struct magic_container_s *magic = &magic_containers[i];
+		const struct magic_container_s *magic = &magic_containers[i];
 		if (!magic->name)
 			continue;
 		if( sql_get_int_field(db, "SELECT 1 from OBJECTS where OBJECT_ID = '%s'", magic->objectid_match) == 0 )

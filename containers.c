@@ -50,23 +50,23 @@ const struct container_s containers[] = {
 
 #define NINETY_DAYS "7776000"
 
-const char *music_id = MUSIC_ID;
-const char *music_all_id = MUSIC_ALL_ID;
-const char *music_genre_id = MUSIC_GENRE_ID;
-const char *music_artist_id = MUSIC_ARTIST_ID;
-const char *music_album_id = MUSIC_ALBUM_ID;
-const char *music_plist_id = MUSIC_PLIST_ID;
-const char *music_dir_id = MUSIC_DIR_ID;
-const char *video_id = VIDEO_ID;
-const char *video_all_id = VIDEO_ALL_ID;
-const char *video_dir_id = VIDEO_DIR_ID;
-const char *image_id = IMAGE_ID;
-const char *image_all_id = IMAGE_ALL_ID;
-const char *image_date_id = IMAGE_DATE_ID;
-const char *image_camera_id = IMAGE_CAMERA_ID;
-const char *image_dir_id = IMAGE_DIR_ID;
+static const char *music_id = MUSIC_ID;
+static const char *music_all_id = MUSIC_ALL_ID;
+static const char *music_genre_id = MUSIC_GENRE_ID;
+static const char *music_artist_id = MUSIC_ARTIST_ID;
+static const char *music_album_id = MUSIC_ALBUM_ID;
+static const char *music_plist_id = MUSIC_PLIST_ID;
+static const char *music_dir_id = MUSIC_DIR_ID;
+static const char *video_id = VIDEO_ID;
+static const char *video_all_id = VIDEO_ALL_ID;
+static const char *video_dir_id = VIDEO_DIR_ID;
+static const char *image_id = IMAGE_ID;
+static const char *image_all_id = IMAGE_ALL_ID;
+static const char *image_date_id = IMAGE_DATE_ID;
+static const char *image_camera_id = IMAGE_CAMERA_ID;
+static const char *image_dir_id = IMAGE_DIR_ID;
 
-struct magic_container_s magic_containers[] =
+const struct magic_container_s magic_containers[] =
 {
 	/* Alternate root container */
 	{ NULL,
@@ -149,7 +149,7 @@ struct magic_container_s magic_containers[] =
 	{ NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 0, 0 }
 };
 
-struct magic_container_s *
+const struct magic_container_s *
 in_magic_container(const char *id, int flags, const char **real_id)
 {
 	size_t len;
@@ -179,7 +179,7 @@ in_magic_container(const char *id, int flags, const char **real_id)
 	return NULL;
 }
 
-struct magic_container_s *
+const struct magic_container_s *
 check_magic_container(const char *id, int flags)
 {
 	int i;
