@@ -529,30 +529,7 @@ insert_file(const char *name, const char *path, const char *parentID, int object
 int
 CreateDatabase(void)
 {
-	int ret, i;
-	const char *containers[] = { "0","-1",   "root",
-	                        MUSIC_ID, "0", _("Music"),
-	                    MUSIC_ALL_ID, MUSIC_ID, _("All Music"),
-	                  MUSIC_GENRE_ID, MUSIC_ID, _("Genre"),
-	                 MUSIC_ARTIST_ID, MUSIC_ID, _("Artist"),
-	                  MUSIC_ALBUM_ID, MUSIC_ID, _("Album"),
-	                    MUSIC_DIR_ID, MUSIC_ID, _("Folders"),
-	                  MUSIC_PLIST_ID, MUSIC_ID, _("Playlists"),
-
-	                        VIDEO_ID, "0", _("Video"),
-	                    VIDEO_ALL_ID, VIDEO_ID, _("All Video"),
-	                    VIDEO_DIR_ID, VIDEO_ID, _("Folders"),
-
-	                        IMAGE_ID, "0", _("Pictures"),
-	                    IMAGE_ALL_ID, IMAGE_ID, _("All Pictures"),
-	                   IMAGE_DATE_ID, IMAGE_ID, _("Date Taken"),
-	                 IMAGE_CAMERA_ID, IMAGE_ID, _("Camera"),
-	                    IMAGE_DIR_ID, IMAGE_ID, _("Folders"),
-
-	                    BROWSEDIR_ID, "0", _("Browse Folders"),
-			0 };
-
-	ret = sql_exec(db, create_objectTable_sqlite);
+	int ret = sql_exec(db, create_objectTable_sqlite);
 	if( ret != SQLITE_OK )
 		goto sql_failed;
 	ret = sql_exec(db, create_detailTable_sqlite);
@@ -576,16 +553,18 @@ CreateDatabase(void)
 	ret = sql_exec(db, "INSERT into SETTINGS values ('UPDATE_ID', '0')");
 	if( ret != SQLITE_OK )
 		goto sql_failed;
-	for( i=0; containers[i]; i=i+3 )
+	for( int i=0; containers[i].name; ++i )
 	{
+		const struct container_s *c = &containers[i];
+		const char *name = _(c->name);
 		ret = sql_exec(db, "INSERT into OBJECTS (OBJECT_ID, PARENT_ID, DETAIL_ID, CLASS, NAME)"
 		                   " values "
 		                   "('%s', '%s', %lld, 'container.storageFolder', '%q')",
-		                   containers[i], containers[i+1], GetFolderMetadata(containers[i+2], NULL, NULL, NULL, 0), containers[i+2]);
+		                   c->object_id, c->parent_id, GetFolderMetadata(name, NULL, NULL, NULL, 0), name);
 		if( ret != SQLITE_OK )
 			goto sql_failed;
 	}
-	for( i=0; magic_containers[i].objectid_match; i++ )
+	for( int i=0; magic_containers[i].objectid_match; i++ )
 	{
 		struct magic_container_s *magic = &magic_containers[i];
 		if (!magic->name)

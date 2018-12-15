@@ -23,6 +23,31 @@
 #include "containers.h"
 #include "log.h"
 
+const struct container_s containers[] = {
+		{ "0","-1",   "root" },
+		{ MUSIC_ID, "0", "Music" },
+		{ MUSIC_ALL_ID, MUSIC_ID, "All Music" },
+		{ MUSIC_GENRE_ID, MUSIC_ID, "Genre" },
+		{ MUSIC_ARTIST_ID, MUSIC_ID, "Artist" },
+		{ MUSIC_ALBUM_ID, MUSIC_ID, "Album" },
+		{ MUSIC_DIR_ID, MUSIC_ID, "Folders" },
+		{ MUSIC_PLIST_ID, MUSIC_ID, "Playlists" },
+
+		{ VIDEO_ID, "0", "Video" },
+		{ VIDEO_ALL_ID, VIDEO_ID, "All Video" },
+		{ VIDEO_DIR_ID, VIDEO_ID, "Folders" },
+
+		{ IMAGE_ID, "0", "Pictures" },
+		{ IMAGE_ALL_ID, IMAGE_ID, "All Pictures" },
+		{ IMAGE_DATE_ID, IMAGE_ID, "Date Taken" },
+		{ IMAGE_CAMERA_ID, IMAGE_ID, "Camera" },
+		{ IMAGE_DIR_ID, IMAGE_ID, "Folders" },
+
+		{ BROWSEDIR_ID, "0", "Browse Folders" },
+
+		{ 0, 0, 0 }
+};
+
 #define NINETY_DAYS "7776000"
 
 const char *music_id = MUSIC_ID;

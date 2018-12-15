@@ -16,6 +16,14 @@
  * along with MiniDLNA. If not, see <http://www.gnu.org/licenses/>.
  */
 
+struct container_s {
+	const char *object_id;
+	const char *parent_id;
+	const char *name;
+};
+
+extern const struct container_s containers[];
+
 struct magic_container_s {
 	const char *name;
 	const char *objectid_match;
