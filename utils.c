@@ -88,13 +88,6 @@ trim(char *str)
 		len--;
 	}
 
-	if (str[0] == '"' && str[len-1] == '"')
-	{
-		str[0] = '\0';
-		str[len-1] = '\0';
-		str++;
-	}
-
 	return str;
 }
 
