@@ -524,6 +524,7 @@ genXML(char * str, int * len, int * tmplen,
 			pile[top].eltname = eltname;
 		}
 	}
+	return str;
 }
 
 /* genRootDesc() :
