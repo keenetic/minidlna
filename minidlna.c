@@ -547,6 +547,7 @@ static void media_dirs_free(struct media_dir_s **dirs)
 		struct media_dir_s *next = d->next;
 
 		free(d->path);
+		free(d->alias);
 		free(d);
 		d = next;
 	}
@@ -557,11 +558,9 @@ static void media_dirs_free(struct media_dir_s **dirs)
 static int media_dirs_append(struct media_dir_s **dirs, const char *path)
 {
 	media_types types = ALL_MEDIA;
-	char buf[PATH_MAX];
 	struct media_dir_s *media_dir;
-	char *word = strchr(path, ',');
 
-	if (word && (access(path, F_OK) != 0))
+	if (*path != '/')
 	{
 		types = 0;
 		while (*path)
@@ -582,20 +581,45 @@ static int media_dirs_append(struct media_dir_s **dirs, const char *path)
 			path++;
 		}
 	}
-	path = realpath(path, buf);
-	if (!path || access(path, F_OK) != 0)
-	{
-		DPRINTF(E_ERROR, L_GENERAL, "Media directory \"%s\" not accessible [%s]\n",
-			path, strerror(errno));
-		return 1;
-	}
-	media_dir = calloc(1, sizeof(struct media_dir_s));
-	if (!media_dir || !(media_dir->path = strdup(path)))
+
+	char* buf = strdup(path);
+	if (!buf)
 	{
 		media_dirs_free(dirs);
 		DPRINTF(E_ERROR, L_GENERAL, "Allocation failed\n");
 		return 1;
 	}
+
+	const char* alias = NULL;
+	char *word = strchr(buf, ',');
+	if (word)
+	{
+		alias = word + 1;
+		*word = 0;
+	}
+
+	char pathbuf[PATH_MAX];
+
+	realpath(buf, pathbuf);
+	if (access(pathbuf, F_OK) != 0)
+	{
+		DPRINTF(E_ERROR, L_GENERAL, "Media directory \"%s\" not accessible [%s]\n",
+			pathbuf, strerror(errno));
+		free(buf);
+		return 1;
+	}
+
+	media_dir = calloc(1, sizeof(struct media_dir_s));
+	if (!media_dir || !(media_dir->path = strdup(pathbuf)) ||
+		(alias && !(media_dir->alias = strdup(alias))))
+	{
+		free(buf);
+		media_dirs_free(dirs);
+		DPRINTF(E_ERROR, L_GENERAL, "Allocation failed\n");
+		return 1;
+	}
+
+	free(buf);
 
 	media_dir->types = types;
 	if (*dirs)

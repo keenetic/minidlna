@@ -929,7 +929,6 @@ void
 start_scanner(const char *status_file)
 {
 	struct media_dir_s *media_path;
-	char path[MAXPATHLEN];
 
 	if (setpriority(PRIO_PROCESS, 0, 15) == -1)
 		DPRINTF(E_WARN, L_INOTIFY,  "Failed to reduce scanner thread priority\n");
@@ -944,15 +943,23 @@ start_scanner(const char *status_file)
 	for( media_path = media_dirs; media_path != NULL; media_path = media_path->next )
 	{
 		int64_t id;
-		char *bname, *parent = NULL;
-		char buf[8];
-		strncpyt(path, media_path->path, sizeof(path));
-		bname = basename(path);
+		const char *bname, *parent = NULL;
+
+		if (!media_path->alias)
+		{
+			char path[MAXPATHLEN];
+			strncpyt(path, media_path->path, sizeof(path));
+			bname = basename(path);
+		} else {
+			bname = media_path->alias;
+		}
+
 		/* If there are multiple media locations, add a level to the ContentDirectory */
 		if( !GETFLAG(MERGE_MEDIA_DIRS_MASK) && media_dirs->next )
 		{
+			char buf[8];
 			int startID = get_next_available_id("OBJECTS", BROWSEDIR_ID);
-			id = insert_directory(bname, path, BROWSEDIR_ID, "", startID);
+			id = insert_directory(bname, media_path->path, BROWSEDIR_ID, "", startID);
 			sprintf(buf, "$%X", startID);
 			parent = buf;
 		}

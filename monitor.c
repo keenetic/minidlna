@@ -177,7 +177,7 @@ inotify_create_watches(int fd)
 	unsigned int num_watches = 0, watch_limit;
 	char **result;
 	int i, rows = 0;
-	struct media_dir_s * media_path;
+	struct media_dir_s *media_path;
 
 	for( media_path = media_dirs; media_path != NULL; media_path = media_path->next )
 	{

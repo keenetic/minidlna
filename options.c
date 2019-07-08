@@ -138,6 +138,12 @@ readoptionsfile(const char * fname)
 		while(isspace(*value))
 			value++;
 
+		if (strlen(value) > MAX_OPTION_VALUE_LEN)
+		{
+			printf("too long option \"%s\" value \"%s\"\n", name, value);
+			continue;
+		}
+
 		id = UPNP_INVALID;
 		for(i=0; i<sizeof(optionids)/sizeof(optionids[0]); i++)
 		{
@@ -194,6 +200,7 @@ freeoptions(void)
 	while (media_path)
 	{
 		free(media_path->path);
+		free(media_path->alias);
 		last_path = media_path;
 		media_path = media_path->next;
 		free(last_path);
