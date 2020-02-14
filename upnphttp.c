@@ -97,6 +97,7 @@ enum event_type {
 };
 
 static void SendResp_icon(struct upnphttp *, char * url);
+static void SendResp_favicon(struct upnphttp * h);
 static void SendResp_albumArt(struct upnphttp *, char * url);
 static void SendResp_caption(struct upnphttp *, char * url);
 static void SendResp_resizedimg(struct upnphttp *, char * url);
@@ -1021,6 +1022,10 @@ ProcessHttpQuery_upnphttp(struct upnphttp * h)
 			SendResp_presentation(h);
 			#endif
 		}
+		else if(strcmp(HttpUrl, "/favicon.ico") == 0)
+		{
+			SendResp_favicon(h);
+		}
 		else
 		{
 			DPRINTF(E_WARN, L_HTTP, "%s not found, responding ERROR 404\n", HttpUrl);
@@ -1375,6 +1380,29 @@ _open_file(const char *orig_path)
 		DPRINTF(E_ERROR, L_HTTP, "Error opening %s\n", path);
 
 	return fd;
+}
+
+static void
+SendResp_favicon(struct upnphttp * h)
+{
+	char header[512], *data;
+	int size;
+	struct string_s str;
+
+	data = (char *)favicon;
+	size = sizeof(favicon)-1;
+
+	INIT_STR(str, header);
+
+	start_dlna_header(&str, 200, "Interactive", "image/x-icon");
+	strcatf(&str, "Content-Length: %d\r\n\r\n", size);
+
+	if( send_data(h, str.data, str.off, MSG_MORE) == 0 )
+	{
+		if( h->req_command != EHead )
+			send_data(h, data, size, 0);
+	}
+	CloseSocket_upnphttp(h);
 }
 
 static void
