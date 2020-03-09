@@ -116,6 +116,10 @@ case $host in
 esac
 
 AC_CHECK_HEADERS(syscall.h sys/syscall.h mach/mach_time.h)
+
+AC_MSG_CHECKING([for clock_gettime])
+AC_SEARCH_LIBS([clock_gettime], [rt], [AC_DEFINE([HAVE_CLOCK_GETTIME], [1], [use clock_gettime])],)
+
 AC_MSG_CHECKING([for __NR_clock_gettime syscall])
 AC_COMPILE_IFELSE(
     [AC_LANG_PROGRAM(
@@ -134,7 +138,6 @@ AC_COMPILE_IFELSE(
     ],
     [
         AC_MSG_RESULT([no])
-        AC_SEARCH_LIBS([clock_gettime], [rt], [AC_DEFINE([HAVE_CLOCK_GETTIME], [1], [use clock_gettime])],)
     ])
 
 AC_CHECK_HEADER(linux/netlink.h,
