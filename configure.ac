@@ -626,6 +626,8 @@ case "$target_os" in
 esac
 
 
-AC_OUTPUT([ po/Makefile.in
-Makefile
-])
+# AC_OUTPUT([ po/Makefile.in
+# Makefile
+# ])
+AC_CONFIG_FILES([Makefile])
+AC_OUTPUT
