@@ -188,7 +188,7 @@ static void
 getfriendlyname(char *buf, int len)
 {
 	char *p = NULL;
-	char hn[256];
+	char hn[63];
 	int off;
 
 	if (gethostname(hn, sizeof(hn)) == 0)
@@ -1079,8 +1079,7 @@ init(	int argc, char * * argv,
 			DPRINTF(E_OFF, L_GENERAL, "No MAC address found.  Falling back to generic UUID.\n");
 			strcpy(mac_str, "554e4b4e4f57");
 		}
-		strcpy(uuidvalue+5, "4d696e69-444c-164e-9d41-");
-		strncat(uuidvalue, mac_str, 12);
+		snprintf(uuidvalue+5, UUIDVALUE_MAX_LEN-5, "4d696e69-444c-164e-9d41-%s", mac_str);
 	}
 
 	if (!friendly_name_set)

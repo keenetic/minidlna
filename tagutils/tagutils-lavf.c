@@ -122,7 +122,7 @@ static int _get_lavffileinfo(char *filename, struct song_metadata *psong) {
 	const char *in;
 	char *out;
 
-	av_register_all();
+	lav_register_all();
 
 	if( (err = lav_open(&ic, filename)) < 0 ) {
 		char buf[128];
