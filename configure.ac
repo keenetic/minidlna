@@ -59,6 +59,7 @@ AC_C_BIGENDIAN
 AC_FUNC_FORK
 AC_FUNC_LSTAT_FOLLOWS_SLASHED_SYMLINK
 AC_CHECK_FUNCS([gethostname getifaddrs gettimeofday inet_ntoa memmove memset mkdir realpath select sendfile setlocale socket strcasecmp strchr strdup strerror strncasecmp strpbrk strrchr strstr strtol strtoul])
+AC_SEARCH_LIBS([clock_gettime], [rt], [AC_DEFINE([HAVE_CLOCK_GETTIME], [1], [use clock_gettime])],)
 
 #
 # Check for struct ip_mreqn
@@ -116,10 +117,6 @@ case $host in
 esac
 
 AC_CHECK_HEADERS(syscall.h sys/syscall.h mach/mach_time.h)
-
-AC_MSG_CHECKING([for clock_gettime])
-AC_SEARCH_LIBS([clock_gettime], [rt], [AC_DEFINE([HAVE_CLOCK_GETTIME], [1], [use clock_gettime])],)
-
 AC_MSG_CHECKING([for __NR_clock_gettime syscall])
 AC_COMPILE_IFELSE(
     [AC_LANG_PROGRAM(
@@ -244,6 +241,9 @@ test x"$ac_cv_header_jpeglib_h" != x"yes" && AC_MSG_ERROR([libjpeg headers not f
 test x"$ac_cv_header_sqlite3_h" != x"yes" && AC_MSG_ERROR([libsqlite3 headers not found or not usable])
 test x"$ac_cv_header_libexif_exif_loader_h" != x"yes" && AC_MSG_ERROR([libexif headers not found or not usable])
 test x"$ac_cv_header_id3tag_h" != x"yes" && AC_MSG_ERROR([libid3tag headers not found or not usable])
+#test x"$ac_cv_header_ogg_ogg_h" != x"yes" && AC_MSG_ERROR([libogg headers not found or not usable])
+#test x"$ac_cv_header_vorbis_codec_h" != x"yes" && AC_MSG_ERROR([libvorbis headers not found or not usable])
+#test x"$ac_cv_header_FLAC_metadata_h" != x"yes" && AC_MSG_ERROR([libFLAC headers not found or not usable])
 
 CFLAGS_SAVE="$CFLAGS"
 CFLAGS="$CFLAGS -Wall -Werror"
@@ -387,11 +387,10 @@ AC_SUBST(LIBJPEG_LIBS)
 
 LDFLAGS_SAVE="$LDFLAGS"
 for dir in "" /usr/local $SEARCH_DIR; do
-    LDFLAGS="$LDFLAGS -lm"
     if test -n "$dir"; then
         LDFLAGS="$LDFLAGS -L$dir/lib"
     fi
-    AC_CHECK_LIB([exif], [exif_data_new_from_file], [LIBEXIF_LIBS="-lm -lexif"], [unset ac_cv_lib_exif_exif_data_new_from_file; LDFLAGS="$LDFLAGS_SAVE"; continue])
+    AC_CHECK_LIB([exif], [exif_data_new_from_file], [LIBEXIF_LIBS="-lexif"], [unset ac_cv_lib_exif_exif_data_new_from_file; LDFLAGS="$LDFLAGS_SAVE"; continue])
     break
 done
 test x"$ac_cv_lib_jpeg_jpeg_set_defaults" = x"yes" || AC_MSG_ERROR([Could not find libexif])
@@ -399,19 +398,17 @@ AC_SUBST(LIBEXIF_LIBS)
 
 LDFLAGS_SAVE="$LDFLAGS"
 for dir in "" /usr/local $SEARCH_DIR; do
-    LDFLAGS="$LDFLAGS -lz"
     if test -n "$dir"; then
         LDFLAGS="$LDFLAGS -L$dir/lib"
     fi
-    AC_CHECK_LIB([id3tag], [id3_file_open], [LIBID3TAG_LIBS="-lid3tag"], [unset ac_cv_lib_id3tag_id3_file_open; LDFLAGS="$LDFLAGS_SAVE"; continue])
+    AC_CHECK_LIB([id3tag -lz], [id3_file_open], [LIBID3TAG_LIBS="-lid3tag -lz"], [unset ac_cv_lib_id3tag_id3_file_open; LDFLAGS="$LDFLAGS_SAVE"; continue])
     break
 done
-test x"$ac_cv_lib_id3tag_id3_file_open" = x"yes" || AC_MSG_ERROR([Could not find libid3tag])
+test x"$ac_cv_lib_id3tag__lz___id3_file_open" = x"yes" || AC_MSG_ERROR([Could not find libid3tag])
 AC_SUBST(LIBID3TAG_LIBS)
 
 LDFLAGS_SAVE="$LDFLAGS"
 for dir in "" /usr/local $SEARCH_DIR; do
-    LDFLAGS="$LDFLAGS -lpthread"
     if test -n "$dir"; then
         LDFLAGS="$LDFLAGS -L$dir/lib"
     fi
@@ -423,33 +420,58 @@ done
 test x"$ac_cv_lib_sqlite3_sqlite3_open" = x"yes" || AC_MSG_ERROR([Could not find libsqlite3])
 AC_SUBST(LIBSQLITE3_LIBS)
 
-AC_CHECK_LIB(avutil ,[av_rescale_q], [LIBAVUTIL_LIBS="-lavutil"], [AC_MSG_ERROR([Could not find libavutil - part of ffmpeg])])
-AC_SUBST(LIBAVUTIL_LIBS)
-
 LDFLAGS_SAVE="$LDFLAGS"
 for dir in "" /usr/local $SEARCH_DIR; do
-	LDFLAGS="$LDFLAGS -lavformat -lavutil"
     if test -n "$dir"; then
         LDFLAGS="$LDFLAGS -L$dir/lib"
     fi
-    AC_CHECK_LIB([avformat], [av_open_input_file],
-                 [LIBAVFORMAT_LIBS="-lavformat -lavcodec -lavutil -lz"; break],
-                 [],
-                 [-lavcodec -lavutil -lz])
-    AC_CHECK_LIB([avformat], [avformat_open_input],
-                 [LIBAVFORMAT_LIBS="-lavformat -lavcodec -lavutil -lz"; break],
-                 [LDFLAGS="$LDFLAGS_SAVE"; continue],
-                 [-lavcodec -lavutil -lz])
+    AC_CHECK_LIB([avformat -lavcodec -lavutil -lz], [avformat_open_input], [LIBAVFORMAT_LIBS="-lavformat -lavcodec -lavutil -lz"],
+		 [AC_CHECK_LIB([avformat -lavcodec -lavutil -lz], [av_open_input_file], [LIBAVFORMAT_LIBS="-lavformat -lavcodec -lavutil -lz"],
+		  [unset ac_cv_lib_avformat_av_open_input_file; unset ac_cv_lib_avformat_avformat_open_input; LDFLAGS="$LDFLAGS_SAVE"; continue])])
+    break
 done
-if test x"$ac_cv_lib_avformat_av_open_input_file" != x"yes" &&
-   test x"$ac_cv_lib_avformat_avformat_open_input" != x"yes"; then
+if test x"$ac_cv_lib_avformat__lavcodec__lavutil__lz___av_open_input_file" != x"yes" &&
+   test x"$ac_cv_lib_avformat__lavcodec__lavutil__lz___avformat_open_input" != x"yes"; then
    AC_MSG_ERROR([Could not find libavformat - part of ffmpeg])
 fi
 AC_SUBST(LIBAVFORMAT_LIBS)
 
 AC_CHECK_LIB(pthread, pthread_create)
-CFLAGS="$CFLAGS -pthread"
-LDFLAGS="$LDFLAGS -lpthread"
+
+# test if we have vorbisfile
+# prior versions had ov_open_callbacks in libvorbis, test that, too.
+AC_CHECK_LIB(vorbisfile, ov_open_callbacks,
+        [AC_CHECK_HEADERS([vorbis/vorbisfile.h],
+         AM_CONDITIONAL(HAVE_VORBISFILE, true)
+         AC_DEFINE(HAVE_VORBISFILE,1,[Have vorbisfile]),
+         AM_CONDITIONAL(HAVE_VORBISFILE, false))],
+         AM_CONDITIONAL(HAVE_VORBISFILE, false),
+         -lvorbis -logg)
+AC_CHECK_LIB(FLAC, FLAC__stream_decoder_init_stream,
+        [AC_CHECK_HEADERS([FLAC/all.h],
+         AM_CONDITIONAL(HAVE_FLAC, true)
+         AC_DEFINE(HAVE_FLAC,1,[Have flac]),
+         AM_CONDITIONAL(HAVE_FLAC, false))],
+         AM_CONDITIONAL(HAVE_FLAC, false),
+        -logg)
+# test without -logg to see whether we really need it (libflac can be without)
+AC_CHECK_LIB(FLAC, FLAC__stream_decoder_init_ogg_stream,
+         AM_CONDITIONAL(HAVE_FLAC, true)
+         AC_DEFINE(HAVE_FLAC,1,[Have flac])
+         AM_CONDITIONAL(NEED_OGG, false),
+        [AM_CONDITIONAL(NEED_OGG, true)])
+AC_CHECK_LIB(vorbisfile, vorbis_comment_query,
+        AM_CONDITIONAL(NEED_VORBIS, false),
+        AM_CONDITIONAL(NEED_VORBIS, true),
+        -logg)
+
+AC_CHECK_LIB(avahi-client, avahi_threaded_poll_new,
+        [AC_CHECK_HEADERS([avahi-common/thread-watch.h],
+         AM_CONDITIONAL(HAVE_AVAHI, true)
+         AC_DEFINE(HAVE_AVAHI,1,[Have avahi]),
+         AM_CONDITIONAL(HAVE_AVAHI, false))],
+         AM_CONDITIONAL(HAVE_AVAHI, false),
+        -lavahi-client -lavahi-common)
 
 ################################################################################################################
 ### Header checks
@@ -479,6 +501,8 @@ AC_CHECK_FUNCS(inotify_init, AC_DEFINE(HAVE_INOTIFY,1,[Whether kernel has inotif
              AC_MSG_RESULT([no])
          ])
 ])
+
+AC_CHECK_FUNCS(kqueue, AM_CONDITIONAL(HAVE_KQUEUE, true), AM_CONDITIONAL(HAVE_KQUEUE, false))
 
 ################################################################################################################
 ### Build Options
@@ -539,11 +563,14 @@ AC_ARG_ENABLE(tivo,
 	[  --enable-tivo           enable TiVo support],[
 	if test "$enableval" = "yes"; then
 		AC_DEFINE(TIVO_SUPPORT, 1, [Define to 1 if you want to enable TiVo support])
+		AM_CONDITIONAL(TIVO_SUPPORT, true)
 		AC_MSG_RESULT([yes])
 	else
+		AM_CONDITIONAL(TIVO_SUPPORT, false)
 		AC_MSG_RESULT([no])
 	fi
 	],[
+		AM_CONDITIONAL(TIVO_SUPPORT, false)
 		AC_MSG_RESULT([no])
 	]
 )
@@ -579,6 +606,22 @@ AC_ARG_ENABLE(readynas,
 		AC_DEFINE_UNQUOTED([ROOTDEV_MANUFACTURER],"NETGEAR")
 		AC_DEFINE_UNQUOTED([ROOTDEV_MODELNAME],"Windows Media Connect compatible (ReadyDLNA)")
 		AC_DEFINE_UNQUOTED([ROOTDEV_MODELDESCRIPTION],"ReadyDLNA")
+		AM_CONDITIONAL(TIVO_SUPPORT, true)
+		AC_MSG_RESULT([yes])
+	else
+		AC_MSG_RESULT([no])
+	fi
+	],[
+		AC_MSG_RESULT([no])
+	]
+)
+
+AC_MSG_CHECKING([whether to build a static binary executable])
+AC_ARG_ENABLE(static,
+	[  --enable-static         build a static binary executable],[
+	if test "$enableval" = "yes"; then
+		CFLAGS="$CFLAGS -DSTATIC"
+		LDFLAGS="$LDFLAGS -static"
                 AC_MSG_RESULT([yes])
         else
                 AC_MSG_RESULT([no])
@@ -588,14 +631,11 @@ AC_ARG_ENABLE(readynas,
         ]
 )
 
-AC_MSG_CHECKING([whether to build a static binary executable])
-AC_ARG_ENABLE(static,
-	[  --enable-static         build a static binary executable],[
+AC_MSG_CHECKING([whether to enable LTO])
+AC_ARG_ENABLE(lto,
+	[  --enable-lto            enable link-time optimization],[
 	if test "$enableval" = "yes"; then
-		STATIC_CFLAGS="-DSTATIC"
-		AC_SUBST(STATIC_CFLAGS)
-		STATIC_LDFLAGS="-Wl,-Bstatic"
-		AC_SUBST(STATIC_LDFLAGS)
+		CFLAGS="$CFLAGS -flto"
                 AC_MSG_RESULT([yes])
         else
                 AC_MSG_RESULT([no])
@@ -604,6 +644,7 @@ AC_ARG_ENABLE(static,
                 AC_MSG_RESULT([no])
         ]
 )
+
 
 case "$target_os" in
 	darwin*)
@@ -631,8 +672,6 @@ case "$target_os" in
 esac
 
 
-# AC_OUTPUT([ po/Makefile.in
-# Makefile
-# ])
-AC_CONFIG_FILES([Makefile])
-AC_OUTPUT
+AC_OUTPUT([ po/Makefile.in
+Makefile
+])
