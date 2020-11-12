@@ -658,6 +658,10 @@ parse_sort_criteria(char *sortCriteria, int *error)
 		{
 			strcatf(&str, "d.ALBUM");
 		}
+		else if( strcasecmp(item, "path") == 0 )
+		{
+			strcatf(&str, "d.PATH");
+		}
 		else
 		{
 			DPRINTF(E_ERROR, L_HTTP, "Unhandled SortCriteria [%s]\n", item);
