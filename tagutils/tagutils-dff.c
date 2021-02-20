@@ -206,12 +206,28 @@ _get_dfffileinfo(char *file, struct song_metadata *psong)
 				fclose(fp);
 				return -1;
 			}
-	
-			if(strncmp((char*)compressionType,(char*)dsdsdckData , 4))
+
+			while(strncmp((char*)compressionType,(char*)dsdsdckData , 4))
 			{
-				DPRINTF(E_WARN, L_SCANNER, "Invalid DSD/DST Sound Data chunk in %s\n", file);
-				fclose(fp);
-				return -1;
+				const uint64_t chunkSize = GET_DFF_INT64(dsdsdckData+4);
+				//DPRINTF(E_WARN, L_SCANNER, "skip chunk in %s 0x%016llx\n", dsdsdckData, chunkSize);
+				totalcount += chunkSize + len;
+
+				if( totalcount >= totalsize - 4)
+				{
+					DPRINTF(E_WARN, L_SCANNER, "eof reached %s\n", file);
+					fclose(fp);
+					return -1;
+				}
+
+				fseeko(fp, chunkSize, SEEK_CUR);
+
+				if(!(rt = fread(dsdsdckData, len, 1,fp)))
+				{
+					DPRINTF(E_WARN, L_SCANNER, "Could not read DSD/DST Sound Data chunk from %s\n", file);
+					fclose(fp);
+					return -1;
+				}
 			}
 
 			if(strncmp((char*)dsdsdckData,"DSD " , 4) == 0)
