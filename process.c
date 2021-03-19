@@ -119,7 +119,8 @@ process_handle_child_termination(int signal)
 			else
 				break;
 		}
-		number_of_children--;
+		if (number_of_children > 0)
+			number_of_children--;
 		remove_process_info(pid);
 	}
 }
