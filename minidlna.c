@@ -154,8 +154,6 @@ sigterm(int sig)
 {
 	signal(sig, SIG_IGN);	/* Ignore this signal while we are quitting */
 
-	/*DPRINTF(E_WARN, L_GENERAL, "received signal %d, good-bye\n", sig);*/
-
 	quitting = 1;
 }
 
@@ -163,7 +161,6 @@ static void
 sigusr1(int sig)
 {
 	signal(sig, sigusr1);
-	DPRINTF(E_INFO, L_GENERAL, "Received signal %d, clear cache\n", sig);
 
 	memset(&clients, '\0', sizeof(clients));
 }
@@ -172,7 +169,6 @@ static void
 sighup(int sig)
 {
 	signal(sig, sighup);
-	DPRINTF(E_INFO, L_GENERAL, "Received signal %d, updating configuration...\n", sig);
 
 	update_configuration = 1;
 }
@@ -1736,6 +1732,7 @@ update_config:
 
 		if (update_configuration)
 		{
+			DPRINTF(E_INFO, L_GENERAL, "Updating configuration...\n");
 			dlna_signal_block(SIGHUP);
 			if (read_configuration_updates(updatefile, statusfile, &scanner_pid, &inotify_thread) != 0)
 			{
