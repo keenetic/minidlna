@@ -64,6 +64,7 @@
 #include <limits.h>
 
 #include "config.h"
+#include "event.h"
 #include "upnpglobalvars.h"
 #include "upnphttp.h"
 #include "upnpdescgen.h"
@@ -103,6 +104,7 @@ static void SendResp_caption(struct upnphttp *, char * url);
 static void SendResp_resizedimg(struct upnphttp *, char * url);
 static void SendResp_thumbnail(struct upnphttp *, char * url);
 static void SendResp_dlnafile(struct upnphttp *, char * url);
+static void Process_upnphttp(struct event *ev);
 
 struct upnphttp * 
 New_upnphttp(int s)
@@ -114,18 +116,20 @@ New_upnphttp(int s)
 	if(ret == NULL)
 		return NULL;
 	memset(ret, 0, sizeof(struct upnphttp));
-	ret->socket = s;
+	ret->ev = (struct event ){ .fd = s, .rdwr = EVENT_READ, .process = Process_upnphttp, .data = ret };
+	event_module.add(&ret->ev);
 	return ret;
 }
 
 void
 CloseSocket_upnphttp(struct upnphttp * h)
 {
-	if(close(h->socket) < 0)
+	event_module.del(&h->ev);
+	if(close(h->ev.fd) < 0)
 	{
-		DPRINTF(E_ERROR, L_HTTP, "CloseSocket_upnphttp: close(%d): %s\n", h->socket, strerror(errno));
+		DPRINTF(E_ERROR, L_HTTP, "CloseSocket_upnphttp: close(%d): %s\n", h->ev.fd, strerror(errno));
 	}
-	h->socket = -1;
+	h->ev.fd = -1;
 	h->state = 100;
 }
 
@@ -134,7 +138,7 @@ Delete_upnphttp(struct upnphttp * h)
 {
 	if(h)
 	{
-		if(h->socket >= 0)
+		if(h->ev.fd >= 0)
 			CloseSocket_upnphttp(h);
 		free(h->req_buf);
 		free(h->res_buf);
@@ -1067,18 +1071,18 @@ ProcessHttpQuery_upnphttp(struct upnphttp * h)
 }
 
 
-void
-Process_upnphttp(struct upnphttp * h)
+static void
+Process_upnphttp(struct event *ev)
 {
 	char buf[2048];
+	struct upnphttp *h = ev->data;
 	int n;
-	if(!h)
-		return;
+
 	switch(h->state)
 	{
 	case 0:
 		do {
-			n = recv(h->socket, buf, 2048, 0);
+			n = recv(h->ev.fd, buf, 2048, 0);
 		} while(n < 0 && (errno == EINTR || errno == EAGAIN));
 		if(n<0)
 		{
@@ -1126,7 +1130,7 @@ Process_upnphttp(struct upnphttp * h)
 	case 1:
 	case 2:
 		do {
-			n = recv(h->socket, buf, 2048, 0);
+			n = recv(h->ev.fd, buf, sizeof(buf), 0);
 		} while(n < 0 && (errno == EINTR || errno == EAGAIN));
 		if(n < 0)
 		{
@@ -1254,7 +1258,7 @@ SendResp_upnphttp(struct upnphttp * h)
 {
 	int n;
 	DPRINTF(E_DEBUG, L_HTTP, "HTTP RESPONSE: %.*s\n", h->res_buflen, h->res_buf);
-	n = (int)io_send_all(h->socket, h->res_buf, h->res_buflen, 0);
+	n = (int)io_send_all(h->ev.fd, h->res_buf, h->res_buflen, 0);
 	if(n<0)
 	{
 		DPRINTF(E_ERROR, L_HTTP, "io_send_all(res_buf): %s\n", strerror(errno));
@@ -1266,7 +1270,7 @@ send_data(struct upnphttp * h, char * header, size_t size, int flags)
 {
 	int n;
 
-	n = (int)io_send_all(h->socket, header, size, flags);
+	n = (int)io_send_all(h->ev.fd, header, size, flags);
 	if(n<0)
 	{
 		DPRINTF(E_ERROR, L_HTTP, "io_send_all(header): %s\n", strerror(errno));
@@ -1291,7 +1295,7 @@ send_file(struct upnphttp * h, int sendfd, off_t offset, off_t end_offset)
 		if( try_sendfile )
 		{
 			send_size = ( ((end_offset - offset) < MAX_BUFFER_SIZE) ? (end_offset - offset + 1) : MAX_BUFFER_SIZE);
-			ret = sys_sendfile(h->socket, sendfd, &offset, send_size);
+			ret = sys_sendfile(h->ev.fd, sendfd, &offset, send_size);
 			if( ret == -1 )
 			{
 				const int err = errno;
@@ -1305,7 +1309,7 @@ send_file(struct upnphttp * h, int sendfd, off_t offset, off_t end_offset)
 			}
 			else
 			{
-				//DPRINTF(E_DEBUG, L_HTTP, "sent %lld bytes to %d. offset is now %lld.\n", ret, h->socket, offset);
+				//DPRINTF(E_DEBUG, L_HTTP, "sent %lld bytes to %d. offset is now %lld.\n", ret, h->ev.fd, offset);
 				continue;
 			}
 		}
@@ -1325,7 +1329,7 @@ send_file(struct upnphttp * h, int sendfd, off_t offset, off_t end_offset)
 			else
 				break;
 		}
-		ret = write(h->socket, buf, ret);
+		ret = write(h->ev.fd, buf, ret);
 		if( ret == -1 ) {
 			const int err = errno;
 
