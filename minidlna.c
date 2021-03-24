@@ -97,6 +97,8 @@
 #include "tivo_beacon.h"
 #include "tivo_utils.h"
 
+#define MIN_LOOP_INTERVAL_MS	5000
+
 #if SQLITE_VERSION_NUMBER < 3005001
 # warning "Your SQLite3 library appears to be too old!  Please use 3.5.1 or newer."
 # define sqlite3_threadsafe() 0
@@ -1648,6 +1650,9 @@ main(int argc, char **argv)
 			if (_get_dbtime() != lastdbtime)
 				updateID++;
 		}
+
+		if (timeout > MIN_LOOP_INTERVAL_MS)
+			timeout = MIN_LOOP_INTERVAL_MS;
 
 		event_module.process(timeout);
 
