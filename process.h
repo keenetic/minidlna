@@ -53,9 +53,8 @@ pid_t process_fork(struct client_cache_s *client);
  * Handler to be called upon receiving SIGCHLD. This signal is received by the
  * parent process when a child terminates, and this handler updates the number
  * of running childs accordingly.
- * @param signal The signal number.
  */
-void process_handle_child_termination(int signal);
+void process_handle_childs_termination(void);
 
 /**
  * Daemonize the current process by forking itself and redirecting standard
@@ -78,8 +77,8 @@ int process_check_if_running(const char *fname);
  */
 void process_reap_children(void);
 
-void dlna_signal_block(int sig);
+void process_signal_block(int sig);
 
-void dlna_signal_unblock(int sig);
+void process_signal_unblock(int sig);
 
 #endif // __PROCESS_H__

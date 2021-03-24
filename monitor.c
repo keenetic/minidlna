@@ -781,7 +781,7 @@ void start_inotify_thread(pthread_t *inotify_thread)
 		DPRINTF(E_ERROR, L_INOTIFY, "Notifier thread already running.\n");
 		return;
 	}
-	dlna_signal_block(SIGCHLD);
+	process_signal_block(SIGCHLD);
 	stop_notifier = 0;
 
 	if( pthread_create(inotify_thread, NULL, start_inotify, NULL) ) {
@@ -791,7 +791,7 @@ void start_inotify_thread(pthread_t *inotify_thread)
 		DPRINTF(E_INFO, L_INOTIFY, "Notifier thread started.\n");
 	}
 
-	dlna_signal_unblock(SIGCHLD);
+	process_signal_unblock(SIGCHLD);
 }
 
 void stop_inotify_thread(pthread_t *inotify_thread)

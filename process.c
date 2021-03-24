@@ -65,24 +65,6 @@ add_process_info(pid_t pid, struct client_cache_s *client)
 	}
 }
 
-static inline void
-remove_process_info(pid_t pid)
-{
-	struct child *child;
-	int i;
-
-	for (i = 0; i < runtime_vars.max_connections; i++)
-	{
-		child = children+i;
-		if (child->pid != pid)
-			continue;
-		child->pid = 0;
-		if (child->client)
-			child->client->connections--;
-		break;
-	}
-}
-
 pid_t
 process_fork(struct client_cache_s *client)
 {
@@ -109,23 +91,32 @@ process_fork(struct client_cache_s *client)
 	return pid;
 }
 
-void
-process_handle_child_termination(int signal)
+void process_handle_childs_termination(void)
 {
+	struct child *child;
 	pid_t pid;
+	int i;
 
-	while ((pid = waitpid(-1, NULL, WNOHANG)))
+	for (i = 0; i < runtime_vars.max_connections; i++)
 	{
-		if (pid == -1)
+		child = children+i;
+
+		if (!child->pid)
+			continue;
+
+		pid = waitpid(child->pid, NULL, WNOHANG);
+
+		if (pid == child->pid)
 		{
-			if (errno == EINTR)
-				continue;
-			else
-				break;
-		}
-		if (number_of_children > 0)
 			number_of_children--;
-		remove_process_info(pid);
+			child->pid = 0;
+
+			if (child->client)
+			{
+				child->client->connections--;
+				child->client = NULL;
+			}
+		}
 	}
 }
 
@@ -215,9 +206,8 @@ process_reap_children(void)
 	}
 }
 
-
 void
-dlna_signal_block(int sig)
+process_signal_block(int sig)
 {
 	sigset_t blocked;
 
@@ -227,7 +217,7 @@ dlna_signal_block(int sig)
 }
 
 void
-dlna_signal_unblock(int sig)
+process_signal_unblock(int sig)
 {
 	sigset_t unblocked;
 

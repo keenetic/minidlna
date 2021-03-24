@@ -102,7 +102,8 @@
 # define sqlite3_threadsafe() 0
 #endif
 
-static volatile int update_configuration = 0;
+static volatile sig_atomic_t update_configuration;
+static volatile sig_atomic_t recv_sigchld;
 
 static LIST_HEAD(httplisthead, upnphttp) upnphttphead;
 
@@ -214,6 +215,12 @@ sighup(int sig)
 	signal(sig, sighup);
 
 	update_configuration = 1;
+}
+
+static void
+sigchld(int sig)
+{
+	recv_sigchld = 1;
 }
 
 /* record the startup time */
@@ -1215,7 +1222,7 @@ init(	int argc, char * * argv,
 	if (signal(SIGHUP, &sighup) == SIG_ERR)
 		DPRINTF(E_FATAL, L_GENERAL, "Failed to set %s handler. EXITING.\n", "SIGHUP");
 	signal(SIGUSR1, &sigusr1);
-	sa.sa_handler = process_handle_child_termination;
+	sa.sa_handler = sigchld;
 	if (sigaction(SIGCHLD, &sa, NULL))
 		DPRINTF(E_FATAL, L_GENERAL, "Failed to set %s handler. EXITING.\n", "SIGCHLD");
 
@@ -1682,17 +1689,25 @@ main(int argc, char **argv)
 			}
 		}
 
+		if (recv_sigchld)
+		{
+			process_signal_block(SIGCHLD);
+			process_handle_childs_termination();
+			recv_sigchld = 0;
+			process_signal_unblock(SIGCHLD);
+		}
+
 		if (update_configuration)
 		{
 			DPRINTF(E_INFO, L_GENERAL, "Updating configuration...\n");
-			dlna_signal_block(SIGHUP);
+			process_signal_block(SIGHUP);
 			if (read_configuration_updates(updatefile, statusfile, &scanner_pid, &inotify_thread) != 0)
 			{
 				DPRINTF(E_ERROR, L_GENERAL, "Failed to reload configuration updates\n");
 				quitting = 1;
 			}
 			update_configuration = 0;
-			dlna_signal_unblock(SIGHUP);
+			process_signal_unblock(SIGHUP);
 		}
 	}
 
