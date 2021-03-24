@@ -104,8 +104,9 @@
 # define sqlite3_threadsafe() 0
 #endif
 
-static volatile sig_atomic_t update_configuration;
+static volatile sig_atomic_t recv_sighup;
 static volatile sig_atomic_t recv_sigchld;
+static volatile sig_atomic_t recv_sigusr1;
 
 static LIST_HEAD(httplisthead, upnphttp) upnphttphead;
 
@@ -208,7 +209,7 @@ sigusr1(int sig)
 {
 	signal(sig, sigusr1);
 
-	memset(&clients, '\0', sizeof(clients));
+	recv_sigusr1 = 1;
 }
 
 static void
@@ -216,7 +217,7 @@ sighup(int sig)
 {
 	signal(sig, sighup);
 
-	update_configuration = 1;
+	recv_sighup = 1;
 }
 
 static void
@@ -1657,7 +1658,10 @@ main(int argc, char **argv)
 		event_module.process(timeout);
 
 		if (quitting)
+		{
+			DPRINTF(E_DEBUG, L_GENERAL, "received SIGTERM, good-bye\n");
 			goto shutdown;
+		}
 
 		upnpevents_gc();
 
@@ -1702,7 +1706,7 @@ main(int argc, char **argv)
 			process_signal_unblock(SIGCHLD);
 		}
 
-		if (update_configuration)
+		if (recv_sighup)
 		{
 			DPRINTF(E_INFO, L_GENERAL, "Updating configuration...\n");
 			process_signal_block(SIGHUP);
@@ -1711,8 +1715,17 @@ main(int argc, char **argv)
 				DPRINTF(E_ERROR, L_GENERAL, "Failed to reload configuration updates\n");
 				quitting = 1;
 			}
-			update_configuration = 0;
+			recv_sighup = 0;
 			process_signal_unblock(SIGHUP);
+		}
+
+		if (recv_sigusr1)
+		{
+			process_signal_block(SIGUSR1);
+			DPRINTF(E_INFO, L_GENERAL, "Received SIGUSR1, clear cache\n");
+			memset(&clients, '\0', sizeof(clients));
+			recv_sigusr1 = 0;
+			process_signal_unblock(SIGUSR1);
 		}
 	}
 
