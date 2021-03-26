@@ -1,3 +1,6 @@
+#ifndef __EVENT_H__
+#define __EVENT_H__
+
 #include "config.h"
 
 #include <sys/types.h>
@@ -52,3 +55,5 @@ struct event_module {
 };
 
 extern struct event_module event_module;
+
+#endif /* __EVENT_H__ */
