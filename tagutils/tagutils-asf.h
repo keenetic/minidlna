@@ -43,8 +43,8 @@ typedef struct _GUID {
 #define SWAP32(l) (l)
 #define SWAP16(w) (w)
 #else
-#define SWAP32(l) ( (((l) >> 24) & 0x000000ff) | (((l) >> 8) & 0x0000ff00) | (((l) << 8) & 0x00ff0000) | (((l) << 24) & 0xff000000) )
-#define SWAP16(w) ( (((w) >> 8) & 0x00ff) | (((w) << 8) & 0xff00) )
+#define SWAP32(l) ( (((l) & 0xff000000) >> 24) | (((l) & 0x00ff0000) >>  8) | (((l) & 0x0000ff00) <<  8) | (((l) & 0x000000ff) << 24) )
+#define SWAP16(w) ( (((w) & 0x00ff) << 8) |  ((w) >> 8) )
 #endif
 
 DEFINE_GUID(ASF_StreamHeader, SWAP32(0xb7dc0791), SWAP16(0xa9b7), SWAP16(0x11cf),
