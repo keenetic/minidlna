@@ -520,41 +520,6 @@ resolve_unknown_type(const char * path, media_types dir_type)
 	return type;
 }
 
-struct dirent *
-dirent_allocate(DIR *dirp)
-{
-	long name_max;
-	size_t name_end;
-#   if defined(HAVE_FPATHCONF) && defined(HAVE_DIRFD) \
-	&& defined(_PC_NAME_MAX)
-	name_max = fpathconf(dirfd(dirp), _PC_NAME_MAX);
-	if (name_max == -1)
-#if defined(NAME_MAX)
-		name_max = (NAME_MAX > 255) ? NAME_MAX : 255;
-#else
-	return NULL;
-
-#endif
-#else
-#if defined(NAME_MAX)
-	name_max = (NAME_MAX > 255) ? NAME_MAX : 255;
-#else
-#error "buffer size for readdir_r cannot be determined"
-#endif
-#endif
-	name_end = (size_t)offsetof(struct dirent, d_name) + name_max + 1;
-
-	return (struct dirent*) malloc(
-		name_end > sizeof(struct dirent) ?
-		name_end : sizeof(struct dirent));
-}
-
-void
-dirent_free(struct dirent *dentry)
-{
-	free(dentry);
-}
-
 int recursive_remove(
 		const char *const path,
 		const char *const entry)
@@ -603,31 +568,32 @@ int recursive_remove(
 			}
 			else
 			{
-				struct dirent *dentry = dirent_allocate(dir);
-				struct dirent *d = NULL;
-
-				if(dentry != NULL)
+				while (1)
 				{
-					ret = 0;
+					struct dirent *d;
 
-					while(
-						readdir_r(dir, dentry, &d) == 0 &&
-						d != NULL && ret == 0)
+					errno = 0;
+					d = readdir(dir);
+
+					if(d == NULL)
 					{
-						if(	strcmp(d->d_name, ".") != 0 &&
-							strcmp(d->d_name, "..") != 0 )
+						if(errno != 0)
 						{
-							ret = recursive_remove(name, d->d_name);
+							DPRINTF(E_WARN, L_GENERAL,
+								"unable to read %s: %s.\n",
+								name, strerror(errno));
+
+							ret = -1;
 						}
+
+						break;
 					}
 
-					dirent_free(dentry);
-				}
-				else
-				{
-					DPRINTF(E_FATAL, L_GENERAL,
-						"Failed to allocate a directory entry " \
-						"for removing.\n");
+					if(	strcmp(d->d_name, ".") != 0 &&
+						strcmp(d->d_name, "..") != 0 )
+					{
+						ret = recursive_remove(name, d->d_name);
+					}
 				}
 
 				closedir(dir);
