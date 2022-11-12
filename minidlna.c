@@ -653,7 +653,14 @@ static int media_dirs_append(struct media_dir_s **dirs, const char *path)
 
 	char pathbuf[PATH_MAX];
 
-	realpath(buf, pathbuf);
+	if (realpath(buf, pathbuf) == NULL)
+	{
+		DPRINTF(E_ERROR, L_GENERAL, "Unable to resolve a media directory \"%s\" [%s]\n",
+			buf, strerror(errno));
+		free(buf);
+		return 1;
+	}
+
 	if (access(pathbuf, F_OK) != 0)
 	{
 		DPRINTF(E_ERROR, L_GENERAL, "Media directory \"%s\" not accessible [%s]\n",
